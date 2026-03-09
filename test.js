@@ -54,6 +54,7 @@ global.canPong = judge.canPong;
 global.canChow = judge.canChow;
 global.canKong = judge.canKong;
 global.checkTenpai = judge.checkTenpai;
+global.calcScore = judge.calcScore;
 global.getAllTileTypes = tile.getAllTileTypes;
 
 console.log('\n--- 基础模块测试 ---\n');
@@ -319,7 +320,7 @@ test('20. 多次随机游戏流程 (50轮)', () => {
   for (let round = 0; round < 50; round++) {
     let tiles = shuffle(initTileSet());
     const { players, remainingTiles } = dealTiles(tiles, 4);
-    
+
     for (let i = 0; i < 4; i++) {
       drawTile(players[i], remainingTiles);
       if (players[i].hand.length > 0) {
@@ -328,6 +329,101 @@ test('20. 多次随机游戏流程 (50轮)', () => {
     }
   }
   console.log('   (50轮随机流程无异常)');
+});
+
+// --- 番型扩展测试 ---
+
+console.log('\n--- 番型扩展测试 ---\n');
+
+test('21. 国士无双判定', () => {
+  // 国士无双：13种幺九牌各一张 + 其中一张成对
+  const hand = [
+    {type:'wan1'},{type:'wan9'},
+    {type:'sou1'},{type:'sou9'},
+    {type:'pin1'},{type:'pin9'},
+    {type:'east'},{type:'south'},{type:'west'},{type:'north'},
+    {type:'zhong'},{type:'fa'},{type:'bai'},
+    {type:'wan1'}  // 重复一张做雀头
+  ];
+  assert(canWin(hand), '国士无双应该能胡');
+  const result = calcScore(hand);
+  assert(result.fans === 13, `国士无双应为13番，实际${result.fans}`);
+  assert(result.fanTypes.some(f => f.name === '国士无双'), '应包含国士无双番型');
+});
+
+test('22. 大三元判定', () => {
+  // 大三元：中发白各一刻子 + 其他
+  const hand = [
+    {type:'zhong'},{type:'zhong'},{type:'zhong'},
+    {type:'fa'},{type:'fa'},{type:'fa'},
+    {type:'bai'},{type:'bai'},{type:'bai'},
+    {type:'wan1'},{type:'wan2'},{type:'wan3'},
+    {type:'wan4'},{type:'wan4'}
+  ];
+  assert(canWin(hand), '大三元应该能胡');
+  const result = calcScore(hand);
+  assert(result.fans >= 8, `大三元应至少8番，实际${result.fans}`);
+  assert(result.fanTypes.some(f => f.name === '大三元'), '应包含大三元番型');
+});
+
+test('23. 四暗刻判定', () => {
+  // 四暗刻：四个暗刻 + 一对（无副露）
+  const hand = [
+    {type:'wan1'},{type:'wan1'},{type:'wan1'},
+    {type:'wan2'},{type:'wan2'},{type:'wan2'},
+    {type:'wan3'},{type:'wan3'},{type:'wan3'},
+    {type:'wan4'},{type:'wan4'},{type:'wan4'},
+    {type:'wan5'},{type:'wan5'}
+  ];
+  assert(canWin(hand), '四暗刻应该能胡');
+  const result = calcScore(hand, []);  // 无副露
+  assert(result.fans >= 6, `四暗刻应至少6番，实际${result.fans}`);
+  assert(result.fanTypes.some(f => f.name === '四暗刻'), '应包含四暗刻番型');
+});
+
+test('24. 三暗刻判定', () => {
+  // 三暗刻：三个暗刻 + 其他顺子 + 一对
+  const hand = [
+    {type:'wan1'},{type:'wan1'},{type:'wan1'},
+    {type:'wan2'},{type:'wan2'},{type:'wan2'},
+    {type:'wan3'},{type:'wan3'},{type:'wan3'},
+    {type:'wan4'},{type:'wan5'},{type:'wan6'},
+    {type:'wan7'},{type:'wan7'}
+  ];
+  assert(canWin(hand), '三暗刻应该能胡');
+  const result = calcScore(hand, []);  // 无副露
+  assert(result.fans >= 2, `三暗刻应至少2番，实际${result.fans}`);
+  assert(result.fanTypes.some(f => f.name === '三暗刻'), '应包含三暗刻番型');
+});
+
+test('25. 小三元判定', () => {
+  // 小三元：两个三元牌刻子 + 一个三元牌对子
+  // 完整牌型：中刻子 + 发刻子 + 白对子 + 123万顺子 + 456万顺子 = 14张
+  const hand = [
+    {type:'zhong'},{type:'zhong'},{type:'zhong'},
+    {type:'fa'},{type:'fa'},{type:'fa'},
+    {type:'bai'},{type:'bai'},
+    {type:'wan1'},{type:'wan2'},{type:'wan3'},
+    {type:'wan4'},{type:'wan5'},{type:'wan6'}
+  ];
+  assert(canWin(hand), '小三元应该能胡');
+  const result = calcScore(hand);
+  assert(result.fans >= 2, `小三元应至少2番，实际${result.fans}`);
+  assert(result.fanTypes.some(f => f.name === '小三元'), '应包含小三元番型');
+});
+
+test('26. 自摸加分', () => {
+  const hand = [
+    {type:'wan1'},{type:'wan1'},{type:'wan1'},
+    {type:'wan2'},{type:'wan3'},{type:'wan4'},
+    {type:'wan5'},{type:'wan6'},{type:'wan7'},
+    {type:'wan8'},{type:'wan8'},{type:'wan8'},
+    {type:'wan9'},{type:'wan9'}
+  ];
+  const resultNormal = calcScore(hand);
+  const resultZimo = calcScore(hand, [], true);  // 自摸
+  assert(resultZimo.fans === resultNormal.fans + 1, '自摸应加1番');
+  assert(resultZimo.fanTypes.some(f => f.name === '自摸'), '应包含自摸番型');
 });
 
 console.log('\n' + '='.repeat(60));

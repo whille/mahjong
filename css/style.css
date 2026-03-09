@@ -478,25 +478,48 @@ header .config-area input {
   background: rgba(26, 26, 46, 0.98);
   border: 4px solid var(--accent-gold);
   border-radius: 15px;
-  padding: 20px;
+  padding: 25px;
   z-index: 200;
   box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8);
   display: none;
   max-width: 90vw;
   max-height: 90vh;
-  overflow: auto;
+  overflow-y: auto;
+  text-align: center;
 }
 
 .reveal-area.show {
   display: block;
+  animation: revealFadeIn 0.4s ease-out;
+}
+
+@keyframes revealFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 .reveal-title {
   text-align: center;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   color: var(--accent-red);
   margin-bottom: 15px;
   font-weight: bold;
+}
+
+.winner-icon {
+  display: inline-block;
+  animation: bounce 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-5px); }
 }
 
 .reveal-player {
@@ -519,7 +542,213 @@ header .config-area input {
 .reveal-hand img {
   width: 40px;
   height: 53px;
-  background: #fff;  /* 白色背景 */
+  background: #fff;
+  transition: transform 0.2s;
+}
+
+.reveal-hand img:hover {
+  transform: translateY(-3px);
+}
+
+/* 胡牌番型显示 */
+.reveal-score {
+  text-align: center;
+  margin: 15px 0;
+  padding: 12px 15px;
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: 10px;
+  border: 1px solid var(--accent-gold);
+}
+
+.fan-types-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.fan-badge {
+  display: inline-block;
+  padding: 5px 12px;
+  background: linear-gradient(145deg, var(--accent-gold), #b8962e);
+  color: var(--bg-color);
+  border-radius: 15px;
+  font-size: 0.9rem;
+  font-weight: bold;
+}
+
+.total-fans-display {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 8px 20px;
+  background: rgba(196, 30, 58, 0.2);
+  border-radius: 25px;
+  border: 2px solid var(--accent-red);
+}
+
+.total-label {
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+
+.total-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: var(--accent-red);
+}
+
+.total-unit {
+  font-size: 1rem;
+  color: var(--text-color);
+}
+
+/* 胡牌类型标签 */
+.win-type-badge {
+  display: inline-block;
+  padding: 6px 20px;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  font-weight: bold;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.win-type-badge.zimo {
+  background: linear-gradient(145deg, #27ae60, #1e8449);
+  color: white;
+}
+
+.win-type-badge.dianpao {
+  background: linear-gradient(145deg, #e74c3c, #c0392b);
+  color: white;
+}
+
+/* 赢家区域 */
+.reveal-winner-section {
+  background: rgba(212, 175, 55, 0.08);
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 15px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.winner-name {
+  color: var(--accent-gold) !important;
+  font-size: 1.2rem !important;
+}
+
+.winner-star {
+  color: var(--accent-red);
+  margin: 0 5px;
+}
+
+.winner-hand {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 10px;
+  border-radius: 8px;
+}
+
+/* 胡的那张牌高亮 */
+.winning-tile {
+  animation: pulseWinning 1s ease-in-out infinite;
+  box-shadow: 0 0 15px rgba(196, 30, 58, 0.8);
+  border: 2px solid var(--accent-red);
+  border-radius: 4px;
+}
+
+@keyframes pulseWinning {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(196, 30, 58, 0.6);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(196, 30, 58, 0.9);
+  }
+}
+
+/* 副露显示 */
+.reveal-melds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(212, 175, 55, 0.3);
+}
+
+/* 手牌/副露区域标签 */
+.hand-section-label {
+  color: rgba(212, 175, 55, 0.7);
+  font-size: 0.8rem;
+  margin-top: 10px;
+  margin-bottom: 5px;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+.reveal-meld {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+/* 副露类型标签 */
+.meld-type-label {
+  color: var(--accent-gold);
+  font-size: 0.85rem;
+  font-weight: bold;
+  padding: 2px 6px;
+  background: rgba(212, 175, 55, 0.15);
+  border-radius: 4px;
+  margin-right: 4px;
+}
+
+.meld-tile {
+  width: 36px;
+  height: 48px;
+}
+
+/* 其他玩家手牌切换 */
+.reveal-others-toggle {
+  text-align: center;
+  margin: 15px 0;
+}
+
+.toggle-btn {
+  padding: 8px 20px;
+  background: rgba(212, 175, 55, 0.2);
+  border: 1px solid var(--accent-gold);
+  color: var(--text-color);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.toggle-btn:hover {
+  background: rgba(212, 175, 55, 0.3);
+}
+
+.reveal-others {
+  border-top: 1px dashed rgba(212, 175, 55, 0.3);
+  padding-top: 15px;
+  margin-top: 10px;
+}
+
+/* 操作按钮区域 */
+.reveal-actions {
+  text-align: center;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
 }
 
 /* 帮助面板 */
@@ -640,34 +869,580 @@ header .config-area input {
   border-radius: 8px;
 }
 
+/* 吃牌选择面板 */
+.chi-selection-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(26, 26, 46, 0.98);
+  border: 3px solid var(--accent-gold);
+  border-radius: 12px;
+  padding: 20px;
+  z-index: 150;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+  text-align: center;
+}
+
+.chi-selection-panel h3 {
+  color: var(--accent-gold);
+  margin-bottom: 15px;
+  font-size: 1.2rem;
+}
+
+.chi-option {
+  display: inline-flex;
+  gap: 4px;
+  padding: 10px 15px;
+  margin: 5px;
+  background: rgba(212, 175, 55, 0.1);
+  border: 2px solid var(--accent-gold);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chi-option:hover {
+  background: rgba(212, 175, 55, 0.25);
+  transform: scale(1.05);
+}
+
+.chi-tile {
+  width: 40px;
+  height: 53px;
+  background: #fff;
+  border-radius: 3px;
+}
+
 /* 响应式 */
 @media (max-width: 768px) {
   :root {
     --tile-width: 32px;
     --tile-height: 42px;
   }
-  
+
   header h1 {
     font-size: 1.3rem;
     letter-spacing: 4px;
   }
-  
+
   .mahjong-table {
     padding: 8px;
     border-width: 4px;
   }
-  
+
   .action-btn {
     padding: 8px 15px;
     font-size: 0.85rem;
   }
-  
+
   .middle-area {
     grid-template-columns: 1fr 1.5fr 1fr;
   }
-  
+
   .tile-back-small {
     width: 18px;
     height: 24px;
   }
+
+  /* Log panel adjustments */
+  .log-panel {
+    width: calc(100vw - 20px);
+    max-width: 400px;
+    max-height: 200px;
+    right: 10px;
+    left: 10px;
+    top: auto;
+    bottom: 10px;
+  }
+
+  .log-content {
+    font-size: 0.75rem;
+  }
+
+  /* Wall area adjustments */
+  .wall-area {
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+  }
+
+  .wall {
+    width: 120px;
+    height: 36px;
+  }
+
+  .wall-count {
+    font-size: 0.85rem;
+  }
+
+  /* Pool adjustments */
+  .pool {
+    transform: scale(0.7);
+    max-width: 240px;
+  }
+
+  /* Reveal area adjustments */
+  .reveal-area {
+    padding: 15px;
+    max-width: 95vw;
+  }
+
+  .reveal-title {
+    font-size: 1.2rem;
+  }
+
+  .reveal-hand img {
+    width: 32px;
+    height: 42px;
+  }
+}
+
+/* 小屏幕手机 */
+@media (max-width: 480px) {
+  :root {
+    --tile-width: 26px;
+    --tile-height: 35px;
+  }
+
+  .game-container {
+    padding: 5px;
+  }
+
+  header {
+    padding: 8px;
+    margin-bottom: 5px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  header h1 {
+    font-size: 1rem;
+    letter-spacing: 2px;
+    width: 100%;
+    order: -1;
+  }
+
+  header .restart-btn-small {
+    position: static;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+
+  header .config-area {
+    position: static;
+    font-size: 0.8rem;
+  }
+
+  .mahjong-table {
+    padding: 5px;
+    border-width: 3px;
+    gap: 5px;
+  }
+
+  .player-area {
+    padding: 3px 5px;
+    gap: 5px;
+  }
+
+  .player-name {
+    font-size: 0.85rem;
+  }
+
+  .player-info {
+    min-width: 60px;
+    gap: 4px;
+  }
+
+  .tile-count {
+    font-size: 0.75rem;
+    padding: 1px 5px;
+  }
+
+  .middle-area {
+    grid-template-columns: 1fr 1fr 1fr;
+    min-height: 60px;
+    gap: 5px;
+  }
+
+  .action-btn {
+    padding: 6px 10px;
+    font-size: 0.75rem;
+  }
+
+  .tile-back-small {
+    width: 14px;
+    height: 19px;
+  }
+
+  /* Pool small screen */
+  .pool {
+    transform: scale(0.6);
+    max-width: 180px;
+  }
+
+  .pool-small.ai-pool {
+    max-width: 160px;
+    max-height: 50px;
+  }
+
+  /* Wall small screen */
+  .wall {
+    width: 90px;
+    height: 28px;
+  }
+
+  .wall-count {
+    font-size: 0.75rem;
+  }
+
+  /* Log panel collapsed by default on mobile */
+  .log-panel {
+    max-height: 150px;
+    width: calc(100vw - 10px);
+  }
+
+  .log-header {
+    padding: 6px;
+    font-size: 0.85rem;
+  }
+
+  .log-content {
+    padding: 5px;
+    font-size: 0.7rem;
+    gap: 4px;
+  }
+
+  .log-entry {
+    padding: 4px 5px;
+    font-size: 0.7rem;
+  }
+
+  /* Chi selection panel */
+  .chi-selection-panel {
+    padding: 12px;
+    max-width: 95vw;
+  }
+
+  .chi-selection-panel h3 {
+    font-size: 1rem;
+    margin-bottom: 10px;
+  }
+
+  .chi-option {
+    padding: 8px 10px;
+    margin: 3px;
+  }
+
+  .chi-tile {
+    width: 32px;
+    height: 42px;
+  }
+
+  /* Reveal area */
+  .reveal-area {
+    padding: 10px;
+  }
+
+  .reveal-title {
+    font-size: 1rem;
+    margin-bottom: 10px;
+  }
+
+  .reveal-player-name {
+    font-size: 0.9rem;
+  }
+
+  .reveal-hand img {
+    width: 28px;
+    height: 37px;
+  }
+
+  .reveal-score {
+    padding: 8px 10px;
+  }
+
+  .reveal-score .fan-types {
+    font-size: 0.9rem;
+  }
+
+  .reveal-score .total-fans {
+    font-size: 1.1rem;
+    padding: 4px 10px;
+  }
+
+  .restart-btn {
+    padding: 10px 25px;
+    font-size: 0.95rem;
+  }
+
+  /* Melds small screen */
+  .melds {
+    gap: 5px;
+    min-height: 25px;
+  }
+
+  .meld {
+    gap: 1px;
+  }
+
+  /* Player vertical info on small screens */
+  .player-left .player-info,
+  .player-right .player-info {
+    writing-mode: horizontal-tb;
+    font-size: 0.75rem;
+  }
+
+  /* Hide config inputs on very small screens */
+  header .config-area input {
+    width: 35px;
+    padding: 2px;
+  }
+}
+
+/* 横屏模式优化 */
+@media (max-width: 768px) and (orientation: landscape) {
+  .game-container {
+    flex-direction: row;
+  }
+
+  .mahjong-table {
+    flex: 1;
+  }
+
+  .log-panel {
+    position: fixed;
+    right: 5px;
+    top: 60px;
+    width: 200px;
+    max-height: calc(100vh - 80px);
+    max-width: 220px;
+  }
+
+  header h1 {
+    font-size: 1.1rem;
+  }
+
+  .player-top,
+  .player-left,
+  .player-right {
+    flex-direction: row;
+  }
+
+  .pool {
+    transform: scale(0.65);
+  }
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+  .tile-img:hover {
+    transform: translateY(-4px);
+  }
+
+  .tile-img.selected {
+    transform: translateY(-8px);
+  }
+
+  .action-btn {
+    min-height: 44px; /* Apple HIG recommended touch target */
+    min-width: 44px;
+  }
+
+  .action-btn:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .action-btn:active:not(:disabled) {
+    transform: scale(0.95);
+    background: linear-gradient(145deg, #b8962e, var(--accent-gold));
+  }
+
+  /* Larger touch targets for buttons */
+  .restart-btn-small,
+  .help-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* ============================================
+   动画系统 (Animation System)
+   ============================================ */
+
+/* 牌面基础动画 */
+.tile-img {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tile-img:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+}
+
+.tile-img.selected {
+  transform: translateY(-12px);
+  box-shadow: 0 6px 16px rgba(196, 30, 58, 0.6);
+}
+
+/* 新摸的牌动画 */
+@keyframes tileDraw {
+  0% {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.8);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tile-draw-animation {
+  animation: tileDraw 0.3s ease-out;
+}
+
+/* 打牌动画 */
+@keyframes tileDiscard {
+  0% {
+    transform: translateY(-10px);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(5px);
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.tile-discard-animation {
+  animation: tileDiscard 0.25s ease-out;
+}
+
+/* 碰牌动画 */
+@keyframes pongAnimation {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.meld-pong-animation {
+  animation: pongAnimation 0.4s ease-out;
+}
+
+/* 杠牌动画 */
+@keyframes kongAnimation {
+  0% {
+    transform: scale(0.3) rotate(-10deg);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15) rotate(5deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.meld-kong-animation {
+  animation: kongAnimation 0.5s ease-out;
+}
+
+/* 吃牌动画 */
+@keyframes chowAnimation {
+  0% {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.meld-chow-animation {
+  animation: chowAnimation 0.35s ease-out;
+}
+
+/* 胡牌动画 */
+@keyframes winAnimation {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.win-animation {
+  animation: winAnimation 0.6s ease-out;
+}
+
+/* 副露入场动画 */
+.meld {
+  transition: all 0.3s ease;
+}
+
+.meld.new-meld {
+  animation: pongAnimation 0.4s ease-out;
+}
+
+/* 按钮点击反馈 */
+.action-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* 玩家高亮动画 */
+.player-area.active {
+  animation: pulseGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    background: rgba(212, 175, 55, 0.15);
+    box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.2);
+  }
+  50% {
+    background: rgba(212, 175, 55, 0.25);
+    box-shadow: inset 0 0 20px rgba(212, 175, 55, 0.4);
+  }
+}
+
+/* 牌池添加动画 */
+.pool img.tile-img {
+  animation: tileDiscard 0.2s ease-out;
+}
+
+/* 消息闪烁 */
+@keyframes messageFlash {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.log-entry.win {
+  animation: messageFlash 1s ease-in-out 3;
 }

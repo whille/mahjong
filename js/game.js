@@ -10,6 +10,8 @@ const GameState = {
   GAMEOVER: 'gameover'
 };
 
+// 游戏状态
+
 // 玩家人声配置 - 每个人固定一个语音（两男两女）
 // 实际位置：玩家=南家(0)，右侧=东家(1)，上方=北家(2)，左侧=西家(3)
 const PLAYER_VOICES = {
@@ -27,7 +29,11 @@ let game = {
   currentPlayer: 0,
   lastDiscard: null,
   dealer: 0,
-  lastAction: null  // 用于跟踪上一个动作（杠后抢胡）
+  lastAction: null,  // 用于跟踪上一个动作（杠后抢胡）
+  // [新增] 状态锁 - 防止动画期间的并发操作
+  isAnimating: false,
+  // [新增] AI难度设置
+  aiDifficulty: AI_DIFFICULTY.MEDIUM
 };
 
 // 麻将牌中文名
@@ -105,32 +111,161 @@ function logEvent(message, type = 'normal') {
 }
 
 // 亮牌显示（胡牌时）
-function revealAllHands(winnerIndex) {
+function revealAllHands(winnerIndex, isZimo = false, isGangshanghua = false) {
   const revealArea = document.createElement('div');
   revealArea.className = 'reveal-area show';
   revealArea.id = 'reveal-area';
-  
-  let html = `<div class="reveal-title">🎉 ${PLAYER_VOICES[winnerIndex].name} 胡牌！</div>`;
-  
-  game.players.forEach((player, idx) => {
-    const isWinner = idx === winnerIndex;
-    html += `<div class="reveal-player">
-      <div class="reveal-player-name">${PLAYER_VOICES[idx].name} ${isWinner ? '🀄' : ''}</div>
-      <div class="reveal-hand">
-        ${player.hand.map(t => `<img src="assets/tiles/${t.type}.png" alt="${t.type}">`).join('')}
+
+  const winner = game.players[winnerIndex];
+
+  // 计算番数和番型
+  const scoreResult = calcScore(winner.hand, winner.melds || [], isZimo, isGangshanghua);
+
+  // 找出胡的那张牌（最后摸的或别人打的）
+  let winningTile = null;
+  if (!isZimo && game.lastDiscard) {
+    winningTile = game.lastDiscard;
+  } else if (winner.hand.length === 14) {
+    // 自摸时，最后一张是新摸的牌
+    winningTile = winner.hand[winner.hand.length - 1];
+  }
+
+  let html = `
+    <div class="reveal-title">
+      <span class="winner-icon">🎉</span>
+      ${PLAYER_VOICES[winnerIndex].name} 胡牌！
+      <span class="winner-icon">🎉</span>
+    </div>
+  `;
+
+  // 显示番型和总番数
+  if (scoreResult.fanTypes && scoreResult.fanTypes.length > 0) {
+    html += `<div class="reveal-score">
+      <div class="fan-types-list">`;
+    scoreResult.fanTypes.forEach(fan => {
+      html += `<span class="fan-badge">${fan.name} ${fan.score}番</span>`;
+    });
+    html += `</div>
+      <div class="total-fans-display">
+        <span class="total-label">总计</span>
+        <span class="total-value">${scoreResult.fans}</span>
+        <span class="total-unit">番</span>
       </div>
     </div>`;
+  }
+
+  // 显示胡牌类型
+  html += `<div class="win-type-badge ${isZimo ? 'zimo' : 'dianpao'}">
+    ${isZimo ? '自摸' : '点炮'}
+    ${isGangshanghua ? ' · 杠上开花' : ''}
+  </div>`;
+
+  // 显示赢家手牌（高亮胡牌）
+  html += `<div class="reveal-winner-section">
+    <div class="reveal-player">
+      <div class="reveal-player-name winner-name">
+        <span class="winner-star">★</span>
+        ${PLAYER_VOICES[winnerIndex].name}
+        <span class="winner-star">★</span>
+      </div>
+      <div class="hand-section-label">手牌</div>
+      <div class="reveal-hand winner-hand">`;
+
+  // 排序手牌用于显示
+  const sortedHand = [...winner.hand].sort((a, b) => a.type.localeCompare(b.type));
+  sortedHand.forEach(tile => {
+    const isWinning = winningTile && tile.type === winningTile.type;
+    const highlightClass = isWinning ? 'winning-tile' : '';
+    html += `<img class="tile-img ${highlightClass}" src="assets/tiles/${tile.type}.png" alt="${tile.type}">`;
   });
-  
-  html += `<div style="text-align:center;margin-top:15px;">
+
+  html += `</div>`;
+
+  // 显示副露
+  if (winner.melds && winner.melds.length > 0) {
+    html += `<div class="hand-section-label">副露</div>`;
+    html += `<div class="reveal-melds">`;
+    winner.melds.forEach(meld => {
+      const meldTypeNames = { 'pong': '碰', 'kong': '杠', 'chow': '吃' };
+      const meldTypeName = meldTypeNames[meld.type] || meld.type;
+      html += `<div class="reveal-meld meld-${meld.type}">`;
+      html += `<span class="meld-type-label">${meldTypeName}</span>`;
+      meld.tiles.forEach(tile => {
+        html += `<img class="tile-img meld-tile" src="assets/tiles/${tile.type}.png" alt="${tile.type}">`;
+      });
+      html += `</div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `</div></div>`;
+
+  // 显示其他玩家手牌（折叠）
+  html += `<div class="reveal-others-toggle">
+    <button class="toggle-btn" onclick="toggleOthersHands()">查看其他玩家手牌 ▼</button>
+  </div>`;
+  html += `<div class="reveal-others" id="reveal-others" style="display:none;">`;
+
+  game.players.forEach((player, idx) => {
+    if (idx === winnerIndex) return;
+
+    html += `<div class="reveal-player">
+      <div class="reveal-player-name">${PLAYER_VOICES[idx].name}</div>
+      <div class="hand-section-label">手牌</div>
+      <div class="reveal-hand">`;
+
+    const sortedOtherHand = [...player.hand].sort((a, b) => a.type.localeCompare(b.type));
+    sortedOtherHand.forEach(tile => {
+      html += `<img class="tile-img" src="assets/tiles/${tile.type}.png" alt="${tile.type}">`;
+    });
+
+    html += `</div>`;
+
+    // 显示副露
+    if (player.melds && player.melds.length > 0) {
+      html += `<div class="hand-section-label">副露</div>`;
+      html += `<div class="reveal-melds">`;
+      player.melds.forEach(meld => {
+        const meldTypeNames = { 'pong': '碰', 'kong': '杠', 'chow': '吃' };
+        const meldTypeName = meldTypeNames[meld.type] || meld.type;
+        html += `<div class="reveal-meld meld-${meld.type}">`;
+        html += `<span class="meld-type-label">${meldTypeName}</span>`;
+        meld.tiles.forEach(tile => {
+          html += `<img class="tile-img meld-tile" src="assets/tiles/${tile.type}.png" alt="${tile.type}">`;
+        });
+        html += `</div>`;
+      });
+      html += `</div>`;
+    }
+
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  html += `<div class="reveal-actions">
     <button class="restart-btn" onclick="closeRevealAndRestart()">再来一局</button>
   </div>`;
-  
+
   revealArea.innerHTML = html;
   document.body.appendChild(revealArea);
-  
+
   // 隐藏原本的重新开始按钮
   elements.restartArea.style.display = 'none';
+}
+
+// 切换显示其他玩家手牌
+function toggleOthersHands() {
+  const others = document.getElementById('reveal-others');
+  const btn = document.querySelector('.toggle-btn');
+  if (others) {
+    if (others.style.display === 'none') {
+      others.style.display = 'block';
+      btn.textContent = '收起其他玩家手牌 ▲';
+    } else {
+      others.style.display = 'none';
+      btn.textContent = '查看其他玩家手牌 ▼';
+    }
+  }
 }
 
 function closeRevealAndRestart() {
@@ -145,6 +280,108 @@ function canKongFromPong(player, tile) {
   if (!player.melds) return false;
   // 检查是否有该牌的碰
   return player.melds.some(meld => meld.type === 'pong' && meld.tiles[0].type === tile.type);
+}
+
+// 获取所有吃牌组合（完整实现）
+function getChiCombinations(hand, tile) {
+  const suit = tile.type.replace(/\d/g, '');
+  const num = parseInt(tile.type.replace(/\D/g, ''));
+
+  // 字牌不能吃
+  if (!['wan', 'sou', 'pin'].includes(suit)) return [];
+
+  const combinations = [];
+
+  // 模式1: x-2, x-1, x (需要 x-2 和 x-1)
+  if (num >= 3) {
+    const need1 = `${suit}${num - 2}`;
+    const need2 = `${suit}${num - 1}`;
+    if (hand.some(t => t.type === need1) && hand.some(t => t.type === need2)) {
+      combinations.push({
+        tiles: [need1, need2],
+        display: [need1, need2, tile.type].sort()
+      });
+    }
+  }
+
+  // 模式2: x-1, x, x+1 (需要 x-1 和 x+1)
+  if (num >= 2 && num <= 8) {
+    const need1 = `${suit}${num - 1}`;
+    const need2 = `${suit}${num + 1}`;
+    if (hand.some(t => t.type === need1) && hand.some(t => t.type === need2)) {
+      combinations.push({
+        tiles: [need1, need2],
+        display: [need1, need2, tile.type].sort()
+      });
+    }
+  }
+
+  // 模式3: x, x+1, x+2 (需要 x+1 和 x+2)
+  if (num <= 7) {
+    const need1 = `${suit}${num + 1}`;
+    const need2 = `${suit}${num + 2}`;
+    if (hand.some(t => t.type === need1) && hand.some(t => t.type === need2)) {
+      combinations.push({
+        tiles: [need1, need2],
+        display: [need1, need2, tile.type].sort()
+      });
+    }
+  }
+
+  return combinations;
+}
+
+// 吃牌选择UI（玩家有多组合时）
+let chiSelectionPanel = null;
+
+function showChiSelection(tile, combinations) {
+  return new Promise(resolve => {
+    // 移除已存在的面板
+    if (chiSelectionPanel) {
+      chiSelectionPanel.remove();
+    }
+
+    chiSelectionPanel = document.createElement('div');
+    chiSelectionPanel.className = 'chi-selection-panel';
+    chiSelectionPanel.innerHTML = '<h3>选择吃牌组合</h3>';
+
+    combinations.forEach((combo, index) => {
+      const option = document.createElement('div');
+      option.className = 'chi-option';
+      option.dataset.index = index;
+
+      // 显示牌面
+      combo.display.forEach(t => {
+        const tileEl = document.createElement('img');
+        tileEl.src = `assets/tiles/${t}.png`;
+        tileEl.className = 'tile-img chi-tile';
+        tileEl.alt = t;
+        option.appendChild(tileEl);
+      });
+
+      option.addEventListener('click', () => {
+        chiSelectionPanel.remove();
+        chiSelectionPanel = null;
+        resolve({ combination: combo, index });
+      });
+
+      chiSelectionPanel.appendChild(option);
+    });
+
+    // 过按钮
+    const passBtn = document.createElement('button');
+    passBtn.textContent = '过';
+    passBtn.className = 'action-btn';
+    passBtn.style.marginTop = '10px';
+    passBtn.onclick = () => {
+      chiSelectionPanel.remove();
+      chiSelectionPanel = null;
+      resolve(null);
+    };
+    chiSelectionPanel.appendChild(passBtn);
+
+    document.body.appendChild(chiSelectionPanel);
+  });
 }
 
 // DOM 元素
@@ -195,19 +432,19 @@ function initGame() {
   game.players = result.players;
   game.wall = result.remainingTiles;
   
-  // 绑定 AI 方法
+  // 绑定 AI 方法（使用难度设置，传入游戏上下文）
   game.players.forEach((p, i) => {
     if (i > 0) {
       p.decide = function(tile) {
-        const ai = new AIPlayer(this);
+        const ai = new AIPlayer(this, game.aiDifficulty, game);
         return ai.decide(tile);
       };
       p.decideResponse = function(discardedTile) {
-        const ai = new AIPlayer(this);
+        const ai = new AIPlayer(this, game.aiDifficulty, game);
         return ai.decideResponse(discardedTile);
       };
       p.decideDiscardAfterAction = function() {
-        const ai = new AIPlayer(this);
+        const ai = new AIPlayer(this, game.aiDifficulty, game);
         return ai.decideDiscardAfterAction();
       };
     }
@@ -228,17 +465,23 @@ function initGame() {
 
 // 开始回合
 function startTurn() {
+  // 状态锁检查
+  if (game.isAnimating) {
+    console.log('动画进行中，延迟开始回合');
+    return;
+  }
+
   const player = game.players[game.currentPlayer];
   const playerName = PLAYER_VOICES[game.currentPlayer].name;
 // // console.log(, game.currentPlayer, playerName);
-  
+
   // 高亮当前摸牌玩家
   highlightCurrentPlayer();
   
   if (game.currentPlayer === 0) {
     // 玩家回合
     game.state = GameState.DRAWING;
-    
+
     // 玩家摸牌
     const tile = drawTile(player, game.wall);
     if (tile) {
@@ -246,8 +489,8 @@ function startTurn() {
       // 新摸的牌暂不排序，显示在右侧
       // player.hand.sort((a, b) => a.type.localeCompare(b.type));
       logEvent(`<span class="log-player">你</span>摸牌`, 'draw');
-      renderPlayerHand();
-      
+      renderPlayerHand(tile.id);  // Pass new tile ID for animation
+
       // 检查能否自摸/暗杠/听牌
       checkPlayerActions();
     } else {
@@ -264,7 +507,13 @@ function startTurn() {
 // 玩家打牌
 function playerDiscard(tileId) {
   // // // console.log(playerDiscard called, state:', game.state, 'currentPlayer:', game.currentPlayer, 'tileId:', tileId);
-  
+
+  // 状态锁检查
+  if (game.isAnimating) {
+    console.log('动画进行中，请稍候');
+    return;
+  }
+
   // 玩家只能在自己的回合打牌
   if (game.currentPlayer !== 0) {
     // // // console.log(不是你的回合');
@@ -332,7 +581,7 @@ function checkRobKongHu(kongPlayer, kongTile, kongPlayerIndex) {
     if (canWin(testHand)) {
       logEvent(`🎉 <span class="log-player">${playerName}</span>抢杠胡！`, 'win');
       game.state = GameState.GAMEOVER;
-      revealAllHands(i);
+      revealAllHands(i, false, false);
       return true;
     }
   }
@@ -408,7 +657,7 @@ function checkAIResponse() {
             }
             logEvent(`🎉 <span class="log-player">${playerName}</span>胡牌！`, 'win');
             game.state = GameState.GAMEOVER;
-            revealAllHands(i);
+            revealAllHands(i, false, false);
             return;
             
           case 'kong':
@@ -641,9 +890,9 @@ function aiTurn() {
         clearTimeout(game.passTimeout);
         game.passTimeout = null;
       }
-      logEvent(`🎉 <span class="log-player">${playerName}</span>胡牌！`, 'win');
+      logEvent(`🎉 <span class="log-player">${playerName}</span>自摸胡牌！`, 'win');
       game.state = GameState.GAMEOVER;
-      revealAllHands(game.currentPlayer);
+      revealAllHands(game.currentPlayer, true, false);
       return;
       
     case 'kong':
@@ -848,13 +1097,14 @@ function nextPlayer(fromPlayer) {
 }
 
 // 渲染玩家手牌
-function renderPlayerHand() {
+function renderPlayerHand(newTileId = null) {
   const hand = game.players[0].hand;
   // // // console.log(renderPlayerHand called, hand length:', hand.length);
-  
+
   // 直接用 onclick 绑定，不用 addEventListener
   elements.playerHand.innerHTML = hand.map((tile, index) => {
-    return `<img class="tile-img" data-id="${tile.id}" src="assets/tiles/${tile.type}.png" alt="${tile.type}" onclick="handleTileClick('${tile.id}')">`;
+    const isNew = tile.id === newTileId ? 'tile-draw-animation' : '';
+    return `<img class="tile-img ${isNew}" data-id="${tile.id}" src="assets/tiles/${tile.type}.png" alt="${tile.type}" onclick="handleTileClick('${tile.id}')">`;
   }).join('');
 }
 
@@ -936,17 +1186,19 @@ function updateWall() {
 }
 
 // 渲染副露
-function renderMelds() {
+function renderMelds(newMeldType = null) {
   const player = game.players[0];
-  
+
   if (!player.melds || player.melds.length === 0) {
     elements.playerMelds.innerHTML = '';
     return;
   }
-  
-  elements.playerMelds.innerHTML = player.melds.map(meld => {
+
+  elements.playerMelds.innerHTML = player.melds.map((meld, index) => {
     const tiles = meld.tiles.map(tile => createTileHTML(tile)).join('');
-    return `<div class="meld horizontal">${tiles}</div>`;
+    // Add animation class for the newest meld
+    const isNewest = (newMeldType && index === player.melds.length - 1) ? `new-meld meld-${newMeldType}-animation` : '';
+    return `<div class="meld horizontal ${isNewest}">${tiles}</div>`;
   }).join('');
 }
 
@@ -1032,7 +1284,8 @@ function handlePlayerAction(action) {
         game.passTimeout = null;
       }
       // 胡牌
-      if (game.state === GameState.DRAWING) {
+      const isPlayerZimo = game.state === GameState.DRAWING;
+      if (isPlayerZimo) {
         // 自摸
         Sound.playZimo();
         // 语音播报动作"胡"
@@ -1046,7 +1299,7 @@ function handlePlayerAction(action) {
         logEvent('🎉 <span class="log-player">你</span>胡牌！', 'win');
       }
       game.state = GameState.GAMEOVER;
-      revealAllHands(0);  // 亮出所有人的牌
+      revealAllHands(0, isPlayerZimo, false);  // 亮出所有人的牌
       break;
       
     case 'pong':
@@ -1084,7 +1337,7 @@ function handlePlayerAction(action) {
           game.lastDiscard = null;
           
           renderPlayerHand();
-          renderMelds();
+          renderMelds('pong');
           renderPool();
           logEvent(`<span class="log-player">你</span>碰了 <span class="log-tile">${lastTileName}</span>（要${lastTileName}）`, 'pong');
           
@@ -1136,9 +1389,9 @@ function handlePlayerAction(action) {
             game.lastDiscard = null;
             
             renderPlayerHand();
-            renderMelds();
+            renderMelds('kong');
             renderPool();
-            
+
             // 杠后需要再摸一张牌
             const drawnTile = drawTile(player, game.wall);
             if (drawnTile) {
@@ -1188,9 +1441,9 @@ function handlePlayerAction(action) {
             game.lastDiscard = null;
             
             renderPlayerHand();
-            renderMelds();
+            renderMelds('kong');
             renderPool();
-            
+
             // 杠后需要再摸一张牌
             const drawnTile = drawTile(player, game.wall);
             if (drawnTile) {
@@ -1256,7 +1509,7 @@ function handlePlayerAction(action) {
           game.lastDiscard = null;
           
           renderPlayerHand();
-          renderMelds();
+          renderMelds('chow');
           renderPool();
           logEvent(`<span class="log-player">你</span>吃了 <span class="log-tile">${lastTileName}</span>（要${lastTileName}）`, 'chow');
           game.state = GameState.DISCARDING;
@@ -1307,214 +1560,6 @@ function handlePlayerAction(action) {
   if (game.state === GameState.DISCARDING && game.currentPlayer === 0) {
     // 玩家需要再打一张牌，不跳转
     return;
-  }
-}
-
-// AI 决策 (完整版)
-class AIPlayer {
-  constructor(player) {
-    this.player = player;
-  }
-  
-  // 回合开始决策 (摸牌后)
-  decide(drawnTile) {
-    // 检查胡 (自摸)
-    const testHand = [...this.player.hand, drawnTile];
-    if (canWin(testHand)) {
-      return { type: 'win', tile: drawnTile };
-    }
-    
-    // 检查杠
-    if (canKong(this.player.hand, drawnTile, true)) {
-      // 评估是否杠: 有好搭子时杠，否则不打
-      if (this.shouldKong(drawnTile)) {
-        return { type: 'kong', tileId: drawnTile.id };
-      }
-    }
-    
-    // 打牌策略
-    const toDiscard = this.chooseDiscard();
-    return { type: 'discard', tileId: toDiscard.id };
-  }
-  
-  // 碰/吃后直接打牌（不摸牌）
-  decideDiscardAfterAction() {
-    // 检查胡
-    if (canWin(this.player.hand)) {
-      return { type: 'win' };
-    }
-    
-    // 打牌策略
-    const toDiscard = this.chooseDiscard();
-    return { type: 'discard', tileId: toDiscard.id };
-  }
-  
-  // 响应其他玩家打出的牌
-  respond(discardedTile) {
-    const hand = this.player.hand;
-    
-    // 检查胡 (抢杠/点炮)
-    const testHand = [...hand, discardedTile];
-    if (canWin(testHand)) {
-      return { type: 'win' };
-    }
-    
-    // 检查碰
-    if (canPong(hand, discardedTile)) {
-      if (this.shouldPong(discardedTile)) {
-        return { type: 'pong', tile: discardedTile };
-      }
-    }
-    
-    // 检查杠 (明杠)
-    if (canKong(hand, discardedTile, false)) {
-      if (this.shouldKong(discardedTile)) {
-        return { type: 'kong', tile: discardedTile };
-      }
-    }
-    
-    // 检查吃 (仅下家)
-    // TODO: 吃牌逻辑
-    
-    return { type: 'pass' };
-  }
-  
-  // 响应其他玩家打出的牌 (独立方法)
-  decideResponse(discardedTile) {
-    const hand = this.player.hand;
-    
-    // 检查胡 (抢杠/点炮)
-    const testHand = [...hand, discardedTile];
-    if (canWin(testHand)) {
-      return { type: 'win' };
-    }
-    
-    // 检查碰 (高优先级)
-    if (canPong(hand, discardedTile)) {
-      if (this.shouldPong(discardedTile)) {
-        return { type: 'pong' };
-      }
-    }
-    
-    // 检查杠 (明杠)
-    if (canKong(hand, discardedTile, false)) {
-      if (this.shouldKong(discardedTile)) {
-        return { type: 'kong' };
-      }
-    }
-    
-    // 检查吃 (仅下家)
-    // 简化：暂不实现
-    
-    return null;
-  }
-  
-  // 评估是否碰
-  shouldPong(tile) {
-    const hand = this.player.hand;
-    const counts = {};
-    hand.forEach(t => counts[t.type] = (counts[t.type] || 0) + 1);
-    
-    // 有4张相同牌，碰
-    if (counts[tile.type] >= 3) return true;
-    
-    // 碰了能听牌，碰
-    const testHand = hand.filter(t => t.type !== tile.type);
-    testHand.push({ type: tile.type }, { type: tile.type });
-    if (checkTenpai(testHand).length > 0) return true;
-    
-    // 字牌容易碰
-    if (['east','south','west','north','zhong','fa','bai'].includes(tile.type)) {
-      return Math.random() > 0.3;
-    }
-    
-    return Math.random() > 0.5;
-  }
-  
-  // 评估是否杠
-  shouldKong(tile) {
-    const hand = this.player.hand;
-    const counts = {};
-    hand.forEach(t => counts[t.type] = (counts[t.type] || 0) + 1);
-    
-    // 暗杠 (4张)
-    if (counts[tile.type] === 4) return true;
-    
-    // 明杠 (3张 + 打出的)
-    // 简化: 50%概率杠
-    return Math.random() > 0.5;
-  }
-  
-  // 选择打哪张牌 (带防御)
-  chooseDiscard(dangerousTiles = []) {
-    const hand = this.player.hand;
-    
-    // 统计各牌数量
-    const counts = {};
-    hand.forEach(t => counts[t.type] = (counts[t.type] || 0) + 1);
-    
-    // 1. 避开危险牌 (后期防御)
-    const safeTiles = hand.filter(t => !dangerousTiles.includes(t.type));
-    if (safeTiles.length > 0 && dangerousTiles.length > 0) {
-      // 优先打安全牌
-      const counts2 = {};
-      safeTiles.forEach(t => counts2[t.type] = (counts2[t.type] || 0) + 1);
-      
-      // 打孤张
-      const singles = safeTiles.filter(t => counts2[t.type] === 1);
-      if (singles.length > 0) return singles[0];
-      
-      // 打多余
-      const extras = safeTiles.filter(t => counts2[t.type] > 2);
-      if (extras.length > 0) return extras[0];
-      
-      return safeTiles[Math.floor(Math.random() * safeTiles.length)];
-    }
-    
-    // 2. 打孤张 (只有1张)
-    const singles = hand.filter(t => counts[t.type] === 1);
-    if (singles.length > 0) {
-      // 优先打字牌
-      const ziTiles = singles.filter(t => 
-        ['east','south','west','north','zhong','fa','bai'].includes(t.type)
-      );
-      if (ziTiles.length > 0) {
-        return ziTiles[Math.floor(Math.random() * ziTiles.length)];
-      }
-      return singles[Math.floor(Math.random() * singles.length)];
-    }
-    
-    // 3. 打多余牌 (超过2张)
-    const extras = hand.filter(t => counts[t.type] > 2);
-    if (extras.length > 0) {
-      return extras[0];
-    }
-    
-    // 4. 随机打一张
-    return hand[Math.floor(Math.random() * hand.length)];
-  }
-  
-  // 评估危险牌 (哪些牌敌人可能胡)
-  evaluateDanger(pool) {
-    const dangerous = [];
-    const allTypes = getAllTileTypes();
-    
-    // 统计桌面上打出的牌
-    const discarded = {};
-    pool.forEach(t => discarded[t.type] = (discarded[t.type] || 0) + 1);
-    
-    // 检查每种牌是否危险 (场上只打出1-2张，可能有人握着)
-    allTypes.forEach(type => {
-      const discardedCount = discarded[type] || 0;
-      if (discardedCount <= 2) {
-        // 后期 (牌山少于20张) 更危险
-        if (game.wall && game.wall.length < 20) {
-          dangerous.push(type);
-        }
-      }
-    });
-    
-    return dangerous;
   }
 }
 
