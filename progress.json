@@ -1,0 +1,85 @@
+{
+  "project": "网页麻将游戏",
+  "version": "1.0.0",
+  "created": "2026-02-22",
+  "status": "completed",
+  "phases": [
+    {
+      "phase": 1,
+      "name": "数据结构与核心逻辑",
+      "status": "completed",
+      "tasks": [
+        { "id": "1.1", "name": "创建项目目录结构", "status": "completed" },
+        { "id": "1.2", "name": "实现牌定义模块 (tile.js)", "status": "completed" },
+        { "id": "1.3", "name": "实现洗牌函数", "status": "completed" },
+        { "id": "1.4", "name": "实现发牌函数", "status": "completed" },
+        { "id": "1.5", "name": "实现摸牌/打牌函数", "status": "completed" },
+        { "id": "1.6", "name": "实现吃/碰/杠判定", "status": "completed" },
+        { "id": "1.7", "name": "实现听牌检测", "status": "completed" },
+        { "id": "1.8", "name": "实现胡牌判定", "status": "completed" },
+        { "id": "1.9", "name": "实现番数计算", "status": "completed" }
+      ]
+    },
+    {
+      "phase": 2,
+      "name": "AI 逻辑",
+      "status": "completed",
+      "tasks": [
+        { "id": "2.1", "name": "创建 AI 模块", "status": "completed" },
+        { "id": "2.2", "name": "实现打牌 AI", "status": "completed" },
+        { "id": "2.3", "name": "实现碰/杠决策", "status": "completed" },
+        { "id": "2.4", "name": "实现胡牌/听牌逻辑", "status": "completed" },
+        { "id": "2.5", "name": "防御逻辑", "status": "completed" }
+      ]
+    },
+    {
+      "phase": 3,
+      "name": "UI/UX",
+      "status": "completed",
+      "tasks": [
+        { "id": "3.1", "name": "创建 HTML 骨架", "status": "completed" },
+        { "id": "3.2", "name": "编写古典风格 CSS", "status": "completed" },
+        { "id": "3.3", "name": "CSS 绘制牌面", "status": "completed" },
+        { "id": "3.4", "name": "实现手牌渲染", "status": "completed" },
+        { "id": "3.5", "name": "实现牌池渲染", "status": "completed" },
+        { "id": "3.6", "name": "实现副露区渲染", "status": "completed" },
+        { "id": "3.7", "name": "实现操作按钮", "status": "completed" },
+        { "id": "3.8", "name": "实现回合流程 UI", "status": "completed" }
+      ]
+    },
+    {
+      "phase": 4,
+      "name": "音效与打磨",
+      "status": "completed",
+      "tasks": [
+        { "id": "4.1", "name": "创建音效合成模块", "status": "completed" },
+        { "id": "4.2", "name": "实现摸牌音效", "status": "completed" },
+        { "id": "4.3", "name": "实现打牌音效", "status": "completed" },
+        { "id": "4.4", "name": "实现碰/杠/胡音效", "status": "completed" },
+        { "id": "4.5", "name": "添加番数说明面板", "status": "completed" },
+        { "id": "4.6", "name": "添加重新开始功能", "status": "completed" },
+        { "id": "4.7", "name": "完整流程测试", "status": "completed" }
+      ]
+    }
+  ],
+  "resources": {
+    "tiles": { "method": "CSS 绘制", "status": "completed" },
+    "sounds": { "method": "Web Audio API 合成", "status": "completed" }
+  },
+  "progress": {
+    "total_tasks": 28,
+    "completed": 28,
+    "percentage": 100
+  },
+  "files": [
+    "index.html",
+    "css/style.css",
+    "css/tiles.css",
+    "js/tile.js",
+    "js/judge.js",
+    "js/game.js",
+    "js/sound.js",
+    "PLAN.md",
+    "progress.json"
+  ]
+}

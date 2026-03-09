@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>网页麻将</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/tiles.css">
+</head>
+<body>
+  <div class="game-container">
+    <header>
+      <button class="restart-btn-small" onclick="initGame()">新局</button>
+      <h1>🀄 网页麻将</h1>
+      <div class="config-area">
+        <label>超时: <input type="number" id="timeout-setting" value="30" min="10" max="120" step="5">秒</label>
+      </div>
+    </header>
+    
+    <main class="mahjong-table">
+      <!-- 对家 (北家) - 上方 -->
+      <div class="player-area player-top" id="player-2">
+        <div class="player-info">
+          <span class="player-name">北家</span>
+          <span class="tile-count" id="ai2-tile-count">13</span>
+        </div>
+        <div class="hand-back" id="ai2-hand"></div>
+        <div class="melds" id="ai2-melds"></div>
+        <div class="pool-small" id="pool-2"></div>
+      </div>
+      
+      <!-- 中间区域: 左家/右家 + 牌池 -->
+      <div class="middle-area">
+        <!-- 左家 (西家) -->
+        <div class="player-area player-left" id="player-3">
+          <div class="player-info">
+            <span class="player-name">西家</span>
+            <span class="tile-count" id="ai3-tile-count">13</span>
+          </div>
+          <div class="melds" id="ai3-melds"></div>
+          <div class="hand-back vertical" id="ai3-hand"></div>
+          <div class="pool-small vertical" id="pool-3"></div>
+        </div>
+        
+        <!-- 中央牌池 -->
+        <div class="pool-center">
+          <div class="pool-small" id="pool-self"></div>
+        </div>
+        
+        <!-- 右家 (东家) -->
+        <div class="player-area player-right" id="player-1">
+          <div class="player-info">
+            <span class="player-name">东家</span>
+            <span class="tile-count" id="ai1-tile-count">13</span>
+          </div>
+          <div class="melds" id="ai1-melds"></div>
+          <div class="hand-back vertical" id="ai1-hand"></div>
+          <div class="pool-small vertical" id="pool-1"></div>
+        </div>
+      </div>
+      
+      <!-- 牌山 -->
+      <div class="wall-area">
+        <div class="wall" id="wall">
+          <span class="wall-count">136 张</span>
+        </div>
+      </div>
+      
+      <!-- 玩家 (你) - 底部 -->
+      <div class="player-area player-self" id="player-0">
+        <div class="player-info">
+          <span class="player-name">南家(你)</span>
+          <span class="player-status" id="player-status"></span>
+        </div>
+        <!-- 副露区 -->
+        <div class="melds" id="player-melds"></div>
+        <!-- 手牌 -->
+        <div class="hand" id="player-hand"></div>
+        <div class="actions" id="player-actions">
+          <button class="action-btn" data-action="chi" disabled>吃</button>
+          <button class="action-btn" data-action="pong" disabled>碰</button>
+          <button class="action-btn" data-action="kong" disabled>杠</button>
+          <button class="action-btn" data-action="win" disabled>胡</button>
+          <button class="action-btn pass-btn" data-action="pass" disabled>跳过</button>
+        </div>
+      </div>
+    </main>
+    
+    <!-- 右侧滚动条提示区域 -->
+    <div class="log-panel" id="log-panel">
+      <div class="log-header">📜 战况记录</div>
+      <div class="log-content" id="log-content"></div>
+    </div>
+    
+    <!-- 消息区域 -->
+    <div class="message-area" id="message-area"></div>
+    
+    <!-- 重新开始按钮 -->
+    <div class="restart-area" id="restart-area" style="display:none;">
+      <button class="restart-btn" onclick="initGame()">再来一局</button>
+    </div>
+    
+    <!-- 番数说明 -->
+    <div class="help-panel" id="help-panel" style="display: none;">
+      <h3>番数说明</h3>
+      <ul>
+        <li>屁胡: 1番</li>
+        <li>碰碰胡: 2番</li>
+        <li>混一色: 3番</li>
+        <li>清一色: 4番</li>
+        <li>七对子: 4番</li>
+        <li>杠上开花: +2番</li>
+        <li>自摸: +1番</li>
+      </ul>
+      <button onclick="toggleHelp()">关闭</button>
+    </div>
+  </div>
+  
+  <script src="js/tile.js"></script>
+  <script src="js/judge.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

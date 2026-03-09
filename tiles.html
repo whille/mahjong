@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>麻将牌展示</title>
+  <style>
+    body { font-family: SimSun, serif; padding: 20px; background: #1a1a2e; }
+    h1 { color: #d4af37; text-align: center; }
+    .tile-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; align-items: center; }
+    .tile-label { color: #f5e6d3; min-width: 60px; }
+    img { width: 60px; height: 80px; }
+  </style>
+</head>
+<body>
+  <h1>🀄 麻将牌展示</h1>
+  
+  <h2 style="color:#f5e6d3">万子</h2>
+  <div class="tile-row" id="wan"></div>
+  
+  <h2 style="color:#f5e6d3">索子</h2>
+  <div class="tile-row" id="sou"></div>
+  
+  <h2 style="color:#f5e6d3">筒子</h2>
+  <div class="tile-row" id="pin"></div>
+  
+  <h2 style="color:#f5e6d3">风牌</h2>
+  <div class="tile-row" id="wind"></div>
+  
+  <h2 style="color:#f5e6d3">箭牌</h2>
+  <div class="tile-row" id="dragon"></div>
+  
+  <h2 style="color:#f5e6d3">牌背</h2>
+  <div class="tile-row" id="back"></div>
+
+  <script src="js/tile-graphics.js"></script>
+  <script>
+    const types = {
+      wan: ['wan1','wan2','wan3','wan4','wan5','wan6','wan7','wan8','wan9'],
+      sou: ['sou1','sou2','sou3','sou4','sou5','sou6','sou7','sou8','sou9'],
+      pin: ['pin1','pin2','pin3','pin4','pin5','pin6','pin7','pin8','pin9'],
+      wind: ['east','south','west','north'],
+      dragon: ['zhong','fa','bai']
+    };
+    
+    function toDataURL(svg) {
+      return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+    }
+    
+    // 万子
+    types.wan.forEach(t => {
+      const svg = TileGraphics.createTileSVG(t, 'large');
+      document.getElementById('wan').innerHTML += `<img src="${toDataURL(svg)}">`;
+    });
+    
+    // 索子
+    types.sou.forEach(t => {
+      const svg = TileGraphics.createTileSVG(t, 'large');
+      document.getElementById('sou').innerHTML += `<img src="${toDataURL(svg)}">`;
+    });
+    
+    // 筒子
+    types.pin.forEach(t => {
+      const svg = TileGraphics.createTileSVG(t, 'large');
+      document.getElementById('pin').innerHTML += `<img src="${toDataURL(svg)}">`;
+    });
+    
+    // 风牌
+    types.wind.forEach(t => {
+      const svg = TileGraphics.createTileSVG(t, 'large');
+      document.getElementById('wind').innerHTML += `<img src="${toDataURL(svg)}">`;
+    });
+    
+    // 箭牌
+    types.dragon.forEach(t => {
+      const svg = TileGraphics.createTileSVG(t, 'large');
+      document.getElementById('dragon').innerHTML += `<img src="${toDataURL(svg)}">`;
+    });
+    
+    // 牌背
+    const backSVG = TileGraphics.createBackSVG('large');
+    document.getElementById('back').innerHTML = `<img src="${toDataURL(backSVG)}">`;
+  </script>
+</body>
+</html>
