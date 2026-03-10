@@ -32,9 +32,113 @@ let game = {
   lastAction: null,  // 用于跟踪上一个动作（杠后抢胡）
   // [新增] 状态锁 - 防止动画期间的并发操作
   isAnimating: false,
+  // [新增] 存储所有timeout，用于清理
+  timeouts: [],
   // [新增] AI难度设置
   aiDifficulty: AI_DIFFICULTY.MEDIUM
 };
+
+// ============================================
+// 动画锁工具函数
+// ============================================
+
+/**
+ * 开始动画 - 设置动画锁
+ */
+function startAnimation() {
+  game.isAnimating = true;
+}
+
+/**
+ * 结束动画 - 释放动画锁
+ */
+function endAnimation() {
+  game.isAnimating = false;
+}
+
+/**
+ * 安全执行动画
+ * @param {Function} animFn - 动画函数
+ * @param {number} duration - 动画持续时间(ms)
+ * @returns {Promise} 动画完成后resolve
+ */
+function runAnimation(animFn, duration = 300) {
+  return new Promise((resolve) => {
+    if (game.isAnimating) {
+      console.warn('[Animation] 已有动画进行中，跳过');
+      resolve(false);
+      return;
+    }
+
+    startAnimation();
+
+    const timeoutId = setTimeout(() => {
+      endAnimation();
+      // 从timeouts数组中移除
+      const idx = game.timeouts.indexOf(timeoutId);
+      if (idx > -1) game.timeouts.splice(idx, 1);
+      resolve(true);
+    }, duration);
+
+    game.timeouts.push(timeoutId);
+
+    // 执行动画函数
+    if (typeof animFn === 'function') {
+      animFn();
+    }
+  });
+}
+
+/**
+ * 安全延迟执行 - 带动画锁
+ * @param {Function} callback - 回调函数
+ * @param {number} delay - 延迟时间(ms)
+ * @returns {number} timeout ID
+ */
+function safeDelay(callback, delay = 300) {
+  const timeoutId = setTimeout(() => {
+    // 从timeouts数组中移除
+    const idx = game.timeouts.indexOf(timeoutId);
+    if (idx > -1) game.timeouts.splice(idx, 1);
+
+    if (typeof callback === 'function') {
+      callback();
+    }
+  }, delay);
+
+  game.timeouts.push(timeoutId);
+  return timeoutId;
+}
+
+/**
+ * 清除所有待执行的timeout
+ */
+function clearAllTimeouts() {
+  game.timeouts.forEach(id => clearTimeout(id));
+  game.timeouts = [];
+
+  // 同时清除passTimeout
+  if (game.passTimeout) {
+    clearTimeout(game.passTimeout);
+    game.passTimeout = null;
+  }
+}
+
+/**
+ * 检查是否可以执行操作
+ * @returns {boolean}
+ */
+function canExecuteAction() {
+  if (game.isAnimating) {
+    console.log('[Action] 动画进行中，操作被阻止');
+    return false;
+  }
+  if (game.state === GameState.GAMEOVER) {
+    console.log('[Action] 游戏已结束');
+    return false;
+  }
+  return true;
+}
 
 // 麻将牌中文名
 const TILE_CHINESE_NAMES = {
@@ -500,7 +604,7 @@ function startTurn() {
   } else {
     // AI 回合
     game.state = GameState.DRAWING;
-    setTimeout(() => aiTurn(), 500);
+    safeDelay(() => aiTurn(), 500);
   }
 }
 
@@ -509,8 +613,8 @@ function playerDiscard(tileId) {
   // // // console.log(playerDiscard called, state:', game.state, 'currentPlayer:', game.currentPlayer, 'tileId:', tileId);
 
   // 状态锁检查
-  if (game.isAnimating) {
-    console.log('动画进行中，请稍候');
+  if (!canExecuteAction()) {
+    console.log('动画进行中或游戏已结束，请稍候');
     return;
   }
 
@@ -519,16 +623,16 @@ function playerDiscard(tileId) {
     // // // console.log(不是你的回合');
     return;
   }
-  
+
   // 玩家回合中才能打牌 (允许 DRAWING, DISCARDING, RESPONDING 状态)
   const allowedStates = [GameState.DRAWING, GameState.DISCARDING, GameState.RESPONDING];
   if (!allowedStates.includes(game.state)) {
     // // // console.log(警告: 状态不理想但仍允许打牌', game.state);
   }
-  
+
   const player = game.players[0];
   // // // console.log(手牌数:', player.hand.length, '尝试打:', tileId);
-  
+
   // 找到要打的牌
   const tileIndex = player.hand.findIndex(t => t.id === tileId);
   if (tileIndex === -1) {
@@ -536,10 +640,10 @@ function playerDiscard(tileId) {
     // // // console.log(手牌IDs:', player.hand.map(t => t.id));
     return;
   }
-  
+
   const tile = discardTile(player, tileId);
   // // // console.log(discardTile result:', tile);
-  
+
   if (tile) {
     Sound.playDiscard();
     // 语音播报牌名，使用玩家0的声音
@@ -547,18 +651,18 @@ function playerDiscard(tileId) {
     game.lastDiscard = tile;
     game.lastDrawer = game.currentPlayer;  // 记录打牌者
     game.state = GameState.DISCARDING;
-    
+
     // 记录到日志
     logEvent(`<span class="log-player">你</span>打出了 <span class="log-tile">${tile.name || tile.type}</span>`, 'discard');
-    
+
     // 排序手牌（打出后重新排序）
     player.hand.sort((a, b) => a.type.localeCompare(b.type));
-    
+
     // 渲染
     renderPlayerHand();
     renderPool();
     updateWall();
-    
+
     // 高亮当前响应玩家（打出牌后等待响应时不高亮任何人的回合）
     // 牌打出后，检查其他玩家是否要响应
     checkAIResponse();
@@ -595,71 +699,68 @@ function checkAIResponse() {
     nextPlayer();
     return;
   }
-  
+
   // 重置 lastAction
   game.lastAction = null;
-  
+
   const lastTileName = lastTile.name || lastTile.type;
-  
+
   // 读取超时设置
   const timeoutInput = document.getElementById('timeout-setting');
   const timeoutMs = (parseInt(timeoutInput?.value) || 30) * 1000;
-  
+
   // 从下家开始检查 (玩家是0，上家是3，下家是1)
   // 玩家打完牌后，逆时针检查：西家(3)->北家(2)->东家(1)
   // 优先级: 胡 > 杠 > 碰 > 吃
   for (let i = 3; i >= 1; i--) {
     const ai = game.players[i];
     const playerName = PLAYER_VOICES[i].name;
-    
+
     // 获取所有可能的响应，按优先级排序
     const responses = [];
-    
+
     // 检查胡 - 最高优先级
     const testHand = [...ai.hand, lastTile];
     if (canWin(testHand)) {
       responses.push({ type: 'win', priority: 4 });
     }
-    
+
     // 检查杠（从碰加杠或直接明杠）
     if (canKongFromPong(ai, lastTile) || canKong(ai.hand, lastTile, false)) {
       responses.push({ type: 'kong', priority: 3 });
     }
-    
+
     // 检查碰
     if (canPong(ai.hand, lastTile)) {
       responses.push({ type: 'pong', priority: 2 });
     }
-    
+
     // 检查吃 (上家才能吃) - 上家是 (当前打牌者 + 3) % 4
     const upperPlayer = (game.currentPlayer + 3) % 4;
     if (i === upperPlayer && canChow(ai.hand, lastTile)) {
       responses.push({ type: 'chow', priority: 1 });
     }
-    
+
     // 按优先级排序，取最高优先级
     if (responses.length > 0) {
       responses.sort((a, b) => b.priority - a.priority);
       const bestResponse = responses[0];
-      
+
       // 延迟响应，让玩家看到提示
-      setTimeout(() => {
+      safeDelay(() => {
         // 高亮正在响应的玩家
         game.currentPlayer = i;
         highlightCurrentPlayer();
-        
+
         switch (bestResponse.type) {
           case 'win':
             // 清除超时计时器
-            if (game.passTimeout) {
-              clearTimeout(game.passTimeout);
-              game.passTimeout = null;
-            }
+            clearAllTimeouts();
             logEvent(`🎉 <span class="log-player">${playerName}</span>胡牌！`, 'win');
             game.state = GameState.GAMEOVER;
             revealAllHands(i, false, false);
             return;
-            
+
           case 'kong':
             logEvent(`<span class="log-player">${playerName}</span>杠了 <span class="log-tile">${lastTileName}</span>（要${lastTileName}）`, 'kong');
             // 语音播报动作"杠"
@@ -671,19 +772,19 @@ function checkAIResponse() {
             // 标记刚刚进行了杠，用于检测抢杠胡
             game.lastAction = 'kong';
             // 杠后立即摸牌，不使用玩家的超时设置
-            setTimeout(() => {
+            safeDelay(() => {
               game.currentPlayer = i;
               const drawn = drawTile(ai, game.wall);
               if (drawn) {
                 // 杠后摸牌，检查是否有人胡（抢杠胡）
                 game.state = GameState.RESPONDING;
-                setTimeout(() => {
+                safeDelay(() => {
                   // 检查其他玩家是否可以抢杠胡
                   if (!checkRobKongHu(ai, lastTile, i)) {
                     // 没人抢杠胡，继续杠者的回合
                     renderPool();
                     updateWall();
-                    setTimeout(() => aiTurn(), 300);
+                    safeDelay(() => aiTurn(), 300);
                   }
                 }, 300);
               } else {
@@ -693,7 +794,7 @@ function checkAIResponse() {
             }, 300);
             return;
             return;
-            
+
           case 'chow':
             logEvent(`<span class="log-player">${playerName}</span>吃了 <span class="log-tile">${lastTileName}</span>（要${lastTileName}）`, 'chow');
             // 语音播报动作"吃"
@@ -703,22 +804,22 @@ function checkAIResponse() {
             renderAIMelds();
             updateWall();
             // 吃后立即打一张，不摸牌（不使用超时）
-            setTimeout(() => {
+            safeDelay(() => {
               game.currentPlayer = i;
               aiDiscardAfterAction();
             }, 300);
             return;
         }
       }, 300);  // 短暂延迟让玩家看到提示
-      
+
       return;
     }
   }
-  
+
   // 没有人响应，进入下一家（从打牌者的下家开始）
   // 玩家打牌后，下一家是西家(3)
   // console.log([checkAIResponse] 无人响应，玩家打牌后轮转到西家');
-  setTimeout(() => nextPlayer(0), 500);
+  safeDelay(() => nextPlayer(0), 500);
 }
 
 // AI 执行碰
@@ -860,7 +961,7 @@ function checkPlayerActions() {
 function aiTurn() {
   const ai = game.players[game.currentPlayer];
   const playerName = PLAYER_VOICES[game.currentPlayer].name;
-  
+
   // AI 摸牌
   const tile = drawTile(ai, game.wall);
   if (!tile) {
@@ -868,10 +969,10 @@ function aiTurn() {
     game.state = GameState.GAMEOVER;
     return;
   }
-  
+
   // 记录摸牌
   logEvent(`<span class="log-player">${playerName}</span>摸牌`, 'draw');
-  
+
   // 听牌检测（摸牌后如果手牌是13张）
   if (ai.hand.length === 13) {
     const tenpaiTiles = checkTenpai(ai.hand);
@@ -879,32 +980,29 @@ function aiTurn() {
       logEvent(`🎯 <span class="log-player">${playerName}</span>听牌了！`, 'draw');
     }
   }
-  
+
   // AI 决策
   const action = ai.decide(tile);
-  
+
   switch (action.type) {
     case 'win':
       // 清除超时计时器
-      if (game.passTimeout) {
-        clearTimeout(game.passTimeout);
-        game.passTimeout = null;
-      }
+      clearAllTimeouts();
       logEvent(`🎉 <span class="log-player">${playerName}</span>自摸胡牌！`, 'win');
       game.state = GameState.GAMEOVER;
       revealAllHands(game.currentPlayer, true, false);
       return;
-      
+
     case 'kong':
       logEvent(`<span class="log-player">${playerName}</span>暗杠`, 'kong');
       // 处理暗杠
       break;
-      
+
     case 'pong':
       logEvent(`<span class="log-player">${playerName}</span>碰了`, 'pong');
       // 处理碰
       break;
-      
+
     case 'discard':
       discardTile(ai, action.tileId);
       game.lastDiscard = ai.pool[ai.pool.length - 1];
@@ -917,23 +1015,23 @@ function aiTurn() {
       }
       break;
   }
-  
+
   renderPool();
   updateWall();
-  
+
   // AI 打牌后，检查玩家是否要碰/杠/胡
   game.state = GameState.RESPONDING;
-  setTimeout(() => checkPlayerResponse(), 500);
+  safeDelay(() => checkPlayerResponse(), 500);
 }
 
 // AI 在碰/吃后直接打牌（不摸牌）
 function aiDiscardAfterAction() {
   const ai = game.players[game.currentPlayer];
   const playerName = PLAYER_VOICES[game.currentPlayer].name;
-  
+
   // 直接选择一张牌打出（不摸牌）
   const action = ai.decideDiscardAfterAction();
-  
+
   if (action && action.type === 'discard') {
     discardTile(ai, action.tileId);
     game.lastDiscard = ai.pool[ai.pool.length - 1];
@@ -943,13 +1041,13 @@ function aiDiscardAfterAction() {
       logEvent(`<span class="log-player">${playerName}</span>打出了 <span class="log-tile">${game.lastDiscard.name || game.lastDiscard.type}</span>`, 'discard');
     }
   }
-  
+
   renderPool();
   updateWall();
-  
+
   // AI 打牌后，检查玩家是否要碰/杠/胡
   game.state = GameState.RESPONDING;
-  setTimeout(() => checkPlayerResponse(), 500);
+  safeDelay(() => checkPlayerResponse(), 500);
 }
 
 // 检查玩家是否要响应 (碰/杠/胡)
@@ -961,23 +1059,23 @@ function checkPlayerResponse() {
   const currentDrawer = game.currentPlayer;
   const discardPlayerName = PLAYER_VOICES[currentDrawer].name;
   // console.log([checkPlayerResponse] 当前打牌者:', currentDrawer, '打出的牌:', lastTileName);
-  
+
   if (!lastTile) {
     // console.log([checkPlayerResponse] 无lastTile，调用nextPlayer');
     nextPlayer(currentDrawer);
     return;
   }
-  
+
   // 高亮当前响应玩家（你）- 传入参数0，不改变游戏状态
   highlightCurrentPlayer(0);
-  
+
   // 重置按钮
   elements.actions.chi.disabled = true;
   elements.actions.pong.disabled = true;
   elements.actions.kong.disabled = true;
   elements.actions.win.disabled = true;
   elements.actions.pass.disabled = true;
-  
+
   // 检查胡 (抢杠胡/点炮) - 最高优先级
   const isFromKong = game.lastAction === 'kong';
   const testHand = [...player.hand, lastTile];
@@ -989,7 +1087,7 @@ function checkPlayerResponse() {
       logEvent(`🔔 <span class="log-player">你</span>可以胡 ${lastTileName}！`, 'win');
     }
   }
-  
+
   // 听牌检测（13张手牌时）
   if (player.hand.length === 13) {
     const tenpaiTiles = checkTenpai(player.hand);
@@ -997,13 +1095,13 @@ function checkPlayerResponse() {
       logEvent(`🎯 <span class="log-player">你</span>听牌了！`, 'draw');
     }
   }
-  
+
   // 检查碰 - 第二优先级
   if (canPong(player.hand, lastTile)) {
     elements.actions.pong.disabled = false;
     logEvent(`🔔 <span class="log-player">你</span>可以碰 ${lastTileName}！`, 'pong');
   }
-  
+
   // 检查杠 (明杠) - 第三优先级
   // 玩家摸牌后可以杠（从碰加杠或直接明杠），但响应别人打出的牌时不能从明牌加杠
   // game.state === GameState.DRAWING 表示刚摸牌，game.state === GameState.RESPONDING 表示响应别人
@@ -1016,7 +1114,7 @@ function checkPlayerResponse() {
     elements.actions.kong.disabled = false;
     logEvent(`🔔 <span class="log-player">你</span>可以杠 ${lastTileName}！`, 'kong');
   }
-  
+
   // 检查吃 (上家打出的牌) - 最低优先级
   // 你的上家是西家(3)，只有上家打的牌才能吃
   const prevPlayer = (currentDrawer + 3) % 4;
@@ -1035,39 +1133,39 @@ function checkPlayerResponse() {
     const name2 = TILE_NAMES[chow2] || chow2;
     logEvent(`🔔 <span class="log-player">你</span>可以吃 ${name1}${name2}！`, 'chow');
   }
-  
+
   // 如果有操作选项，启用跳过按钮
-  if (!elements.actions.chi.disabled || !elements.actions.pong.disabled || 
+  if (!elements.actions.chi.disabled || !elements.actions.pong.disabled ||
       !elements.actions.kong.disabled || !elements.actions.win.disabled) {
     elements.actions.pass.disabled = false;
   }
-  
+
   // 读取超时设置
   const timeoutInput = document.getElementById('timeout-setting');
   const timeoutMs = (parseInt(timeoutInput?.value) || 30) * 1000;
-  
+
   // 超时后自动跳过
-  game.passTimeout = setTimeout(() => {
+  game.passTimeout = safeDelay(() => {
     if (elements.actions.pass && !elements.actions.pass.disabled) {
       handlePlayerAction('pass');
     }
   }, timeoutMs);
-  
+
   // 如果没有可选操作，自动继续（从当前打牌者的下家开始）
   // console.log([checkPlayerResponse] 按钮状态 - chi:', elements.actions.chi.disabled, 'pong:', elements.actions.pong.disabled, 'kong:', elements.actions.kong.disabled, 'win:', elements.actions.win.disabled);
-  if (elements.actions.chi.disabled && 
-      elements.actions.pong.disabled && 
-      elements.actions.kong.disabled && 
+  if (elements.actions.chi.disabled &&
+      elements.actions.pong.disabled &&
+      elements.actions.kong.disabled &&
       elements.actions.win.disabled) {
     // console.log([checkPlayerResponse] 无操作，跳过');
     // 无操作时，去打牌者的下家（逆时针）
     // 如果是AI打牌，玩家不响应，去北家
     // 如果是玩家打牌，玩家不响应，去西家
     const discardPlayer = game.lastDrawer !== undefined ? game.lastDrawer : currentDrawer;
-    const nextPlayer = (discardPlayer + 3) % 4;
-    game.currentPlayer = nextPlayer;
+    const nextPlayerIndex = (discardPlayer + 3) % 4;
+    game.currentPlayer = nextPlayerIndex;
     game.lastDiscard = null;
-    setTimeout(() => startTurn(), 300);
+    safeDelay(() => startTurn(), 300);
   } else {
     // console.log([checkPlayerResponse] 有操作，等待玩家点击');
   }
@@ -1082,18 +1180,18 @@ function nextPlayer(fromPlayer) {
   }
   // 逆时针顺序：南家(0) -> 西家(3) -> 北家(2) -> 东家(1) -> 南家(0)
   game.currentPlayer = (game.currentPlayer + 3) % 4;
-  
+
   // 高亮当前玩家
   highlightCurrentPlayer();
-  
-  // 检查流局
-  if (game.wall.length < 4) {
-    showMessage('❌ 牌山已空，流局');
+
+  // 检查流局 - 牌山已空
+  if (game.wall.length === 0) {
+    logEvent('❌ 牌山已空，流局', 'win');
     game.state = GameState.GAMEOVER;
     return;
   }
-  
-  setTimeout(() => startTurn(), 300);
+
+  safeDelay(() => startTurn(), 300);
 }
 
 // 渲染玩家手牌
@@ -1278,11 +1376,8 @@ function handlePlayerAction(action) {
   
   switch (action) {
     case 'win':
-      // 清除超时计时器
-      if (game.passTimeout) {
-        clearTimeout(game.passTimeout);
-        game.passTimeout = null;
-      }
+      // 清除所有超时
+      clearAllTimeouts();
       // 胡牌
       const isPlayerZimo = game.state === GameState.DRAWING;
       if (isPlayerZimo) {
@@ -1350,11 +1445,8 @@ function handlePlayerAction(action) {
           elements.actions.kong.disabled = true;
           elements.actions.win.disabled = true;
           elements.actions.pass.disabled = true;
-          if (game.passTimeout) {
-            clearTimeout(game.passTimeout);
-            game.passTimeout = null;
-          }
-          
+          clearAllTimeouts();
+
           // // // console.log(PONG done: hand has', player.hand.length, 'tiles');
         }
       }
@@ -1408,10 +1500,7 @@ function handlePlayerAction(action) {
               elements.actions.kong.disabled = true;
               elements.actions.win.disabled = true;
               elements.actions.pass.disabled = true;
-              if (game.passTimeout) {
-                clearTimeout(game.passTimeout);
-                game.passTimeout = null;
-              }
+              clearAllTimeouts();
               checkPlayerActions();
             }
           }
@@ -1518,11 +1607,8 @@ function handlePlayerAction(action) {
           elements.actions.kong.disabled = true;
           elements.actions.win.disabled = true;
           elements.actions.pass.disabled = true;
-          if (game.passTimeout) {
-            clearTimeout(game.passTimeout);
-            game.passTimeout = null;
-          }
-          
+          clearAllTimeouts();
+
           // 确保回合回到玩家
           game.currentPlayer = 0;
         }
@@ -1535,11 +1621,8 @@ function handlePlayerAction(action) {
   
   // 处理跳过
   if (action === 'pass') {
-    // 清除超时
-    if (game.passTimeout) {
-      clearTimeout(game.passTimeout);
-      game.passTimeout = null;
-    }
+    // 清除所有超时
+    clearAllTimeouts();
     // 清除 lastDiscard
     game.lastDiscard = null;
     // 跳过，玩家摸牌（回到玩家自己的回合）
@@ -1552,7 +1635,7 @@ function handlePlayerAction(action) {
     const lastDrawer = game.lastDrawer || game.currentPlayer;
     game.currentPlayer = (lastDrawer + 3) % 4;  // 跳到下家
     // console.log([pass] 跳过，玩家摸牌:', game.currentPlayer);
-    setTimeout(() => startTurn(), 300);
+    safeDelay(() => startTurn(), 300);
     return;
   }
   
