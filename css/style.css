@@ -1293,8 +1293,13 @@ header .config-area input {
   }
 }
 
-/* 竖屏手机模式 */
-@media (max-width: 768px) and (orientation: portrait) {
+/* 默认隐藏战况切换按钮（宽度足够时不显示） */
+.log-toggle-btn {
+  display: none;
+}
+
+/* 窄屏模式（宽度不足时隐藏战况记录） */
+@media (max-width: 900px) {
   /* 隐藏战况记录面板 */
   .log-panel {
     display: none;
@@ -1313,7 +1318,7 @@ header .config-area input {
     display: flex;
   }
 
-  /* 战况切换按钮 */
+  /* 显示战况切换按钮 */
   .log-toggle-btn {
     display: block;
     position: fixed;
@@ -1372,11 +1377,6 @@ header .config-area input {
     font-size: 0.8rem;
     min-width: 50px;
   }
-}
-
-/* 默认隐藏战况切换按钮（非竖屏不显示） */
-.log-toggle-btn {
-  display: none;
 }
 
 /* ============================================
