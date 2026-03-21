@@ -782,6 +782,7 @@ function checkAIResponse() {
             handleAIKong(ai, lastTile, game.currentPlayer);
             renderPool();
             renderAIMelds();
+            renderAIBacks();
             updateWall();
             // 标记刚刚进行了杠，用于检测抢杠胡
             game.lastAction = 'kong';
@@ -815,6 +816,7 @@ function checkAIResponse() {
             handleAIPong(ai, lastTile, game.currentPlayer);
             renderPool();
             renderAIMelds();
+            renderAIBacks();
             updateWall();
             // 碰后立即打一张，不摸牌
             safeDelay(() => {
@@ -830,6 +832,7 @@ function checkAIResponse() {
             handleAIChow(ai, lastTile, game.currentPlayer);
             renderPool();
             renderAIMelds();
+            renderAIBacks();
             updateWall();
             // 吃后立即打一张，不摸牌（不使用超时）
             safeDelay(() => {
