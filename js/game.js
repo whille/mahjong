@@ -1066,6 +1066,7 @@ function aiTurn() {
   }
 
   renderPool();
+  renderAIBacks();
   updateWall();
 
   // AI 打牌后，检查其他玩家是否要响应（包括其他 AI 和玩家）
@@ -1092,6 +1093,7 @@ function aiDiscardAfterAction() {
   }
 
   renderPool();
+  renderAIBacks();
   updateWall();
 
   // AI 打牌后，检查其他玩家是否要响应（包括其他 AI 和玩家）
