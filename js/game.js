@@ -886,6 +886,29 @@ function handleAIPong(ai, tile, fromPlayerIndex) {
 
 // AI 执行杠
 function handleAIKong(ai, tile, fromPlayerIndex) {
+  // 检查是否是"从碰加杠"（已有碰，别人打出第4张）
+  const existingPongIndex = ai.melds ? ai.melds.findIndex(m => m.type === 'pong' && m.tiles[0].type === tile.type) : -1;
+
+  if (existingPongIndex !== -1) {
+    // 从碰加杠：将碰升级为杠
+    const oldPong = ai.melds[existingPongIndex];
+    ai.melds[existingPongIndex] = {
+      type: 'kong',
+      tiles: [...oldPong.tiles, tile]
+    };
+    // 从打出这张牌的玩家的牌池中移除
+    if (fromPlayerIndex !== undefined) {
+      const fromPlayer = game.players[fromPlayerIndex];
+      if (fromPlayer && fromPlayer.pool.length > 0) {
+        fromPlayer.pool.pop();
+      }
+    }
+    // 清除 lastDiscard
+    game.lastDiscard = null;
+    return;
+  }
+
+  // 普通明杠：手牌有3张 + 打出的1张
   const indices = [];
   ai.hand.forEach((t, i) => {
     if (t.type === tile.type && indices.length < 3) indices.push(i);
