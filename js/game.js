@@ -1703,31 +1703,29 @@ function handlePlayerAction(action) {
           }
         }
       } else if (lastTile) {
-        // 明杠 - 响应别人打出的牌
-        } else {
-          // 直接明杠 - 手牌3张+打出的1张
-          const indices = [];
-          player.hand.forEach((t, i) => {
-            if (t.type === lastTile.type && indices.length < 3) indices.push(i);
+        // 明杠 - 响应别人打出的牌（手牌3张+打出的1张）
+        const indices = [];
+        player.hand.forEach((t, i) => {
+          if (t.type === lastTile.type && indices.length < 3) indices.push(i);
+        });
+        if (indices.length === 3) {
+          indices.sort((a, b) => b - a).forEach(i => player.hand.splice(i, 1));
+          player.melds = player.melds || [];
+          player.melds.push({
+            type: 'kong',
+            tiles: [
+              { type: lastTile.type },
+              { type: lastTile.type },
+              { type: lastTile.type },
+              lastTile
+            ]
           });
-          if (indices.length === 3) {
-            indices.sort((a, b) => b - a).forEach(i => player.hand.splice(i, 1));
-            player.melds = player.melds || [];
-            player.melds.push({
-              type: 'kong',
-              tiles: [
-                { type: lastTile.type },
-                { type: lastTile.type },
-                { type: lastTile.type },
-                lastTile
-              ]
-            });
-            // 移除打出的牌
-            if (player.pool.length > 0) {
-              player.pool.pop();
-            }
-            // 清除 lastDiscard
-            game.lastDiscard = null;
+          // 移除打出的牌
+          if (player.pool.length > 0) {
+            player.pool.pop();
+          }
+          // 清除 lastDiscard
+          game.lastDiscard = null;
             
             renderPlayerHand();
             renderMelds('kong');
