@@ -1491,8 +1491,15 @@ function renderMelds(newMeldType = null) {
   }
 
   elements.playerMelds.innerHTML = player.melds.map((meld, index) => {
-    const tiles = meld.tiles.map(tile => createTileHTML(tile)).join('');
-    // Add animation class for the newest meld
+    // 暗杠显示背面，其他显示正面
+    let tiles;
+    if (meld.type === 'kong' && meld.concealed) {
+      // 暗杠：显示4张背面
+      tiles = meld.tiles.map(() => createBackHTML()).join('');
+    } else {
+      // 明杠/碰/吃：显示正面
+      tiles = meld.tiles.map(tile => createTileHTML(tile)).join('');
+    }
     const isNewest = (newMeldType && index === player.melds.length - 1) ? `new-meld meld-${newMeldType}-animation` : '';
     return `<div class="meld horizontal ${isNewest}">${tiles}</div>`;
   }).join('');
@@ -1514,11 +1521,15 @@ function renderAIMelds() {
     const isVertical = (i === 1 || i === 3);
 
     el.innerHTML = player.melds.map(meld => {
-      // 副露显示：全部亮出（明牌）
-      const tiles = meld.tiles.map((tile, idx) => {
-        // 碰/杠/吃全部亮出（明牌）
-        return `<img class="tile-back-small" src="assets/tiles/${tile.type}.png">`;
-      }).join('');
+      // 暗杠显示背面，其他显示正面
+      let tiles;
+      if (meld.type === 'kong' && meld.concealed) {
+        // 暗杠：显示4张背面
+        tiles = meld.tiles.map(() => createBackHTML()).join('');
+      } else {
+        // 明杠/碰/吃：显示正面
+        tiles = meld.tiles.map(tile => `<img class="tile-back-small" src="assets/tiles/${tile.type}.png">`).join('');
+      }
       // 东西家用 vertical，北家用 horizontal
       return `<div class="meld ${isVertical ? 'vertical' : 'horizontal'}">${tiles}</div>`;
     }).join('');
