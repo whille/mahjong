@@ -723,6 +723,17 @@ function checkAIResponse() {
   const timeoutInput = document.getElementById('timeout-setting');
   const timeoutMs = (parseInt(timeoutInput?.value) || 10) * 1000;
 
+  // 先检查玩家是否可以胡（玩家有优先响应权）
+  const player = game.players[0];
+  if (discardPlayer !== 0) {  // 不是玩家自己打出的牌
+    const playerTestHand = [...player.hand, lastTile];
+    if (canWin(playerTestHand, player.melds)) {
+      // 玩家可以胡，给玩家优先选择权
+      checkPlayerResponse();
+      return;
+    }
+  }
+
   // 从下家开始检查 (玩家是0，上家是3，下家是1)
   // 玩家打完牌后，逆时针检查：西家(3)->北家(2)->东家(1)
   // 优先级: 胡 > 杠 > 碰 > 吃
