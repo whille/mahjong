@@ -723,37 +723,55 @@ function checkAIResponse() {
   const timeoutInput = document.getElementById('timeout-setting');
   const timeoutMs = (parseInt(timeoutInput?.value) || 10) * 1000;
 
-  // 先检查玩家是否可以胡（玩家有优先响应权）
-  const player = game.players[0];
-  if (discardPlayer !== 0) {  // 不是玩家自己打出的牌
-    const playerTestHand = [...player.hand, lastTile];
-    if (canWin(playerTestHand, player.melds)) {
-      // 玩家可以胡，给玩家优先选择权
-      checkPlayerResponse();
-      return;
+  // 按顺时针顺序检查（从打牌者的下家开始）
+  // 游戏中玩家顺序（逆时针）：南家(0) → 东家(1) → 北家(2) → 西家(3)
+  // 顺时针顺序：南家(0) → 西家(3) → 北家(2) → 东家(1)
+  // 下家 = (打牌者 + 1) % 4
+  const checkOrder = [
+    (discardPlayer + 1) % 4,  // 下家
+    (discardPlayer + 2) % 4,  // 对家
+    (discardPlayer + 3) % 4   // 上家
+  ];
+
+  // 按顺时针顺序检查谁能胡牌
+  for (const playerIndex of checkOrder) {
+    const player = game.players[playerIndex];
+    const testHand = [...player.hand, lastTile];
+
+    if (canWin(testHand, player.melds)) {
+      // 这个玩家可以胡牌
+      if (playerIndex === 0) {
+        // 玩家可以胡，给玩家选择权
+        checkPlayerResponse();
+        return;
+      } else {
+        // AI 胡牌
+        const playerName = PLAYER_VOICES[playerIndex].name;
+        safeDelay(() => {
+          endAnimation();
+          clearAllTimeouts();
+          logEvent(`🎉 <span class="log-player">${playerName}</span>胡牌！`, 'win');
+          game.state = GameState.GAMEOVER;
+          revealAllHands(playerIndex, false, false);
+        }, 300);
+        return;
+      }
     }
   }
 
-  // 从下家开始检查 (玩家是0，上家是3，下家是1)
-  // 玩家打完牌后，逆时针检查：西家(3)->北家(2)->东家(1)
-  // 优先级: 胡 > 杠 > 碰 > 吃
-  for (let i = 3; i >= 1; i--) {
-    // 跳过打出这张牌的玩家自己
-    if (i === discardPlayer) {
+  // 没有人胡牌，继续检查其他响应（杠/碰/吃）
+  // 从下家开始检查
+  for (const playerIndex of checkOrder) {
+    // 跳过玩家（玩家在 checkPlayerResponse 中处理）
+    if (playerIndex === 0) {
       continue;
     }
 
-    const ai = game.players[i];
-    const playerName = PLAYER_VOICES[i].name;
+    const ai = game.players[playerIndex];
+    const playerName = PLAYER_VOICES[playerIndex].name;
 
     // 获取所有可能的响应，按优先级排序
     const responses = [];
-
-    // 检查胡 - 最高优先级
-    const testHand = [...ai.hand, lastTile];
-    if (canWin(testHand, ai.melds)) {
-      responses.push({ type: 'win', priority: 4 });
-    }
 
     // 检查杠（从碰加杠或直接明杠）
     if (canKongFromPong(ai, lastTile) || canKong(ai.hand, lastTile, false)) {
@@ -767,7 +785,7 @@ function checkAIResponse() {
 
     // 检查吃 (上家才能吃) - 上家是 (打牌者 + 3) % 4
     const upperPlayer = (discardPlayer + 3) % 4;
-    if (i === upperPlayer && canChow(ai.hand, lastTile)) {
+    if (playerIndex === upperPlayer && canChow(ai.hand, lastTile)) {
       responses.push({ type: 'chow', priority: 1 });
     }
 
@@ -782,22 +800,14 @@ function checkAIResponse() {
         endAnimation();
 
         // 高亮正在响应的玩家
-        game.currentPlayer = i;
+        game.currentPlayer = playerIndex;
         highlightCurrentPlayer();
 
         switch (bestResponse.type) {
-          case 'win':
-            // 清除超时计时器
-            clearAllTimeouts();
-            logEvent(`🎉 <span class="log-player">${playerName}</span>胡牌！`, 'win');
-            game.state = GameState.GAMEOVER;
-            revealAllHands(i, false, false);
-            return;
-
           case 'kong':
             logEvent(`<span class="log-player">${playerName}</span>杠了 <span class="log-tile">${lastTileName}</span>（要${lastTileName}）`, 'kong');
             // 语音播报动作"杠"
-            speakAction('杠', i);
+            speakAction('杠', playerIndex);
             handleAIKong(ai, lastTile, discardPlayer);
             renderPool();
             renderAIMelds();
@@ -807,14 +817,14 @@ function checkAIResponse() {
             game.lastAction = 'kong';
             // 杠后立即摸牌，不使用玩家的超时设置
             safeDelay(() => {
-              game.currentPlayer = i;
+              game.currentPlayer = playerIndex;
               const drawn = drawTile(ai, game.wall);
               if (drawn) {
                 // 杠后摸牌，检查是否有人胡（抢杠胡）
                 game.state = GameState.RESPONDING;
                 safeDelay(() => {
                   // 检查其他玩家是否可以抢杠胡
-                  if (!checkRobKongHu(ai, lastTile, i)) {
+                  if (!checkRobKongHu(ai, lastTile, playerIndex)) {
                     // 没人抢杠胡，继续杠者的回合
                     renderPool();
                     updateWall();
@@ -831,7 +841,7 @@ function checkAIResponse() {
           case 'pong':
             logEvent(`<span class="log-player">${playerName}</span>碰了 <span class="log-tile">${lastTileName}</span>`, 'pong');
             // 语音播报动作"碰"
-            speakAction('碰', i);
+            speakAction('碰', playerIndex);
             handleAIPong(ai, lastTile, discardPlayer);
             renderPool();
             renderAIMelds();
@@ -839,7 +849,7 @@ function checkAIResponse() {
             updateWall();
             // 碰后立即打一张，不摸牌
             safeDelay(() => {
-              game.currentPlayer = i;
+              game.currentPlayer = playerIndex;
               aiDiscardAfterAction();
             }, 300);
             return;
@@ -847,7 +857,7 @@ function checkAIResponse() {
           case 'chow':
             logEvent(`<span class="log-player">${playerName}</span>吃了 <span class="log-tile">${lastTileName}</span>（要${lastTileName}）`, 'chow');
             // 语音播报动作"吃"
-            speakAction('吃', i);
+            speakAction('吃', playerIndex);
             handleAIChow(ai, lastTile, discardPlayer);
             renderPool();
             renderAIMelds();
@@ -855,7 +865,7 @@ function checkAIResponse() {
             updateWall();
             // 吃后立即打一张，不摸牌（不使用超时）
             safeDelay(() => {
-              game.currentPlayer = i;
+              game.currentPlayer = playerIndex;
               aiDiscardAfterAction();
             }, 300);
             return;
