@@ -250,13 +250,14 @@ header .config-area input {
   overflow: hidden;
 }
 
-/* 西家和东家的出牌堆 - N行2列布局 */
-.player-right .pool-small.ai-pool,
-.player-left .pool-small.ai-pool {
+/* 西家和东家的出牌堆 - N行2列布局（覆盖上面的一般样式） */
+#player-1 .pool-small.ai-pool,
+#player-3 .pool-small.ai-pool {
   flex-direction: column;  /* 竖向排列 */
   flex-wrap: wrap;         /* 换列 */
-  max-width: 60px;         /* 2列宽度：24px * 2 + gap */
-  max-height: 200px;       /* 限制高度，自动换列 */
+  max-width: 55px;         /* 2列宽度：24px * 2 + gap */
+  max-height: none;        /* 不限制高度 */
+  min-height: 32px;        /* 最小高度 */
 }
 
 .pool-small img.tile-img {
@@ -834,14 +835,11 @@ header .config-area input {
 /* 竖向排列的副露（东西家） */
 .meld.vertical {
   flex-direction: column;
+  gap: 2px;  /* 牌之间的间距 */
 }
 
 .meld.vertical .tile-back-small {
-  margin-bottom: -16px;
-}
-
-.meld.vertical .tile-back-small:last-child {
-  margin-bottom: 0;
+  margin-bottom: 0;  /* 移除负边距 */
 }
 
 /* 重新开始按钮 */

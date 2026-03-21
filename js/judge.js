@@ -35,16 +35,31 @@ const HONOR_TILES = [...WIND_TILES, ...DRAGON_TILES];
 /**
  * 判断能否胡牌
  * @param {Array} hand - 手牌数组
+ * @param {Array} melds - 副露数组（可选），每个副露是一个面子
  * @returns {boolean}
  */
-function canWin(hand) {
-  // 需要14张牌
-  if (hand.length !== 14) return false;
+function canWin(hand, melds = []) {
+  // 计算副露中的牌数
+  const meldTileCount = melds.reduce((sum, m) => sum + m.tiles.length, 0);
+
+  // 计算杠的数量（每个杠会增加1张牌，因为杠后摸牌）
+  const kongCount = melds.filter(m => m.type === 'kong').length;
+
+  // 需要的手牌数：14 + 杠数 - 副露牌数
+  // 例如：无副露需要14张，1个杠(4张副露)需要 14+1-4=11 张手牌
+  const expectedHandSize = 14 + kongCount - meldTileCount;
+
+  if (hand.length !== expectedHandSize) return false;
 
   const tiles = hand.map(t => t.type);
 
-  // 先检查特殊牌型：国士无双
-  if (isThirteenOrphans(tiles)) return true;
+  // 先检查特殊牌型：国士无双（只有无副露时才可能）
+  if (melds.length === 0 && isThirteenOrphans(tiles)) return true;
+
+  // 计算需要的面子数
+  // 副露已经提供了 melds.length 个面子
+  // 手牌需要提供: (expectedHandSize - 2) / 3 个面子 + 1个对子
+  const neededMeldsFromHand = (expectedHandSize - 2) / 3;
 
   // 检查是否有对子
   // 尝试将每个对子作为雀头，检查剩余是否能组成顺子/刻子

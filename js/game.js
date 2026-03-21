@@ -687,13 +687,13 @@ function checkRobKongHu(kongPlayer, kongTile, kongPlayerIndex) {
   // 检查除杠者外的其他玩家
   for (let i = 0; i < 4; i++) {
     if (i === kongPlayerIndex) continue;
-    
+
     const player = game.players[i];
     const playerName = PLAYER_VOICES[i].name;
-    
+
     // 手中加上一张杠的牌，看能否胡
     const testHand = [...player.hand, kongTile];
-    if (canWin(testHand)) {
+    if (canWin(testHand, player.melds)) {
       logEvent(`🎉 <span class="log-player">${playerName}</span>抢杠胡！`, 'win');
       game.state = GameState.GAMEOVER;
       revealAllHands(i, false, false);
@@ -732,7 +732,7 @@ function checkAIResponse() {
 
     // 检查胡 - 最高优先级
     const testHand = [...ai.hand, lastTile];
-    if (canWin(testHand)) {
+    if (canWin(testHand, ai.melds)) {
       responses.push({ type: 'win', priority: 4 });
     }
 
@@ -944,10 +944,10 @@ function checkPlayerActions() {
   elements.actions.kong.disabled = true;
   elements.actions.win.disabled = true;
   elements.actions.pass.disabled = true; // 摸牌后没有跳过选项
-  
+
   // 检查胡 (自摸)
   const testHand = [...player.hand];
-  if (canWin(testHand)) {
+  if (canWin(testHand, player.melds)) {
     elements.actions.win.disabled = false;
     logEvent('🔔 <span class="log-player">你</span>可以自摸！', 'win');
   }
@@ -1114,26 +1114,16 @@ function checkPlayerResponse() {
   // 检查胡 (抢杠胡/点炮) - 最高优先级
   const isFromKong = game.lastAction === 'kong';
 
-  // 计算总牌数：手牌 + 副露 + 打出的牌
-  let testHand = [...player.hand, lastTile];
+  // 手牌 + 打出的牌
+  const testHand = [...player.hand, lastTile];
 
-  // 如果有副露，把副露牌也加入
-  const meldTiles = player.melds ? player.melds.flatMap(m => m.tiles) : [];
-  const totalTiles = testHand.length + meldTiles.length;
+  // 副露
+  const melds = player.melds || [];
 
-  // 计算杠的数量（每个杠会增加1张牌）
-  const kongCount = player.melds ? player.melds.filter(m => m.type === 'kong').length : 0;
-  const expectedTiles = 14 + kongCount;
+  console.log('[checkPlayerResponse] 手牌+新牌:', testHand.length, '副露:', melds.length);
 
-  console.log('[checkPlayerResponse] 手牌:', testHand.length, '副露:', meldTiles.length, '总计:', totalTiles, '预期:', expectedTiles);
-
-  // 胡牌需要正确数量的牌（14 + 杠的数量）
-  let canWinResult = false;
-  if (totalTiles === expectedTiles) {
-    // 把副露牌也加入 testHand 进行判断
-    const fullHand = [...testHand, ...meldTiles];
-    canWinResult = canWin(fullHand);
-  }
+  // 判断胡牌（副露已经固定，只判断手牌+新牌能否组成面子+对子）
+  const canWinResult = canWin(testHand, melds);
 
   console.log('[checkPlayerResponse] 测试手牌:', testHand.map(t => t.type), '测试胡牌...');
   console.log('[checkPlayerResponse] canWin 结果:', canWinResult);

@@ -46,7 +46,7 @@ class AIPlayer {
   simpleDecide(drawnTile) {
     // 检查自摸
     const testHand = [...this.player.hand];
-    if (canWin(testHand)) {
+    if (canWin(testHand, this.player.melds)) {
       return { type: 'win', tile: drawnTile };
     }
 
@@ -59,7 +59,7 @@ class AIPlayer {
   advancedDecide(drawnTile) {
     // 检查胡 (自摸)
     const testHand = [...this.player.hand];
-    if (canWin(testHand)) {
+    if (canWin(testHand, this.player.melds)) {
       return { type: 'win', tile: drawnTile };
     }
 
@@ -78,7 +78,7 @@ class AIPlayer {
   // 碰/吃后直接打牌（不摸牌）
   decideDiscardAfterAction() {
     // 检查胡
-    if (canWin(this.player.hand)) {
+    if (canWin(this.player.hand, this.player.melds)) {
       return { type: 'win' };
     }
 
@@ -98,7 +98,7 @@ class AIPlayer {
 
     // 检查胡 (抢杠/点炮)
     const testHand = [...hand, discardedTile];
-    if (canWin(testHand)) {
+    if (canWin(testHand, this.player.melds)) {
       return { type: 'win' };
     }
 
@@ -130,7 +130,7 @@ class AIPlayer {
 
     // 检查胡 (抢杠/点炮)
     const testHand = [...hand, discardedTile];
-    if (canWin(testHand)) {
+    if (canWin(testHand, this.player.melds)) {
       return { type: 'win' };
     }
 
