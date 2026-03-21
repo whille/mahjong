@@ -992,7 +992,7 @@ function handleAIChow(ai, tile, fromPlayerIndex) {
 function checkPlayerActions() {
   const player = game.players[0];
   const lastTile = game.lastDiscard;
-  
+
   // 重置按钮
   elements.actions.chi.disabled = true;
   elements.actions.pong.disabled = true;
@@ -1006,7 +1006,7 @@ function checkPlayerActions() {
     elements.actions.win.disabled = false;
     logEvent('🔔 <span class="log-player">你</span>可以自摸！', 'win');
   }
-  
+
   // 检查暗杠
   if (player.hand.some(t => {
     const count = player.hand.filter(x => x.type === t.type).length;
@@ -1015,15 +1015,21 @@ function checkPlayerActions() {
     elements.actions.kong.disabled = false;
     logEvent('🔔 <span class="log-player">你</span>可以暗杠！', 'kong');
   }
-  
-  // 检查加杠（从碰加杠）- 摸到的牌和已有的碰组成杠
-  if (lastTile && player.melds) {
-    const hasPongWithTile = player.melds.some(m => 
-      m.type === 'pong' && m.tiles[0].type === lastTile.type
-    );
-    if (hasPongWithTile) {
-      elements.actions.kong.disabled = false;
-      logEvent(`🔔 <span class="log-player">你</span>可以杠 ${lastTile.name || lastTile.type}！（从碰加杠）`, 'kong');
+
+  // 检查加杠（从碰加杠）- 手牌中某张牌和已有的碰组成杠
+  // 摸牌后手牌有14张，检查每张牌是否可以加杠
+  if (player.melds) {
+    for (const tile of player.hand) {
+      const hasPongWithTile = player.melds.some(m =>
+        m.type === 'pong' && m.tiles[0].type === tile.type
+      );
+      if (hasPongWithTile) {
+        elements.actions.kong.disabled = false;
+        logEvent(`🔔 <span class="log-player">你</span>可以杠 ${tile.name || tile.type}！（从碰加杠）`, 'kong');
+        // 记录可以加杠的牌，供 handlePlayerAction 使用
+        game.kongTile = tile;
+        break;
+      }
     }
   }
   
@@ -1075,9 +1081,85 @@ function aiTurn() {
       return;
 
     case 'kong':
-      logEvent(`<span class="log-player">${playerName}</span>暗杠`, 'kong');
-      // 处理暗杠
-      break;
+      // 处理杠（暗杠或从碰加杠）
+      if (action.kongType === 'fromPong') {
+        // 从碰加杠
+        logEvent(`<span class="log-player">${playerName}</span>杠了 <span class="log-tile">${tile.name || tile.type}</span>（从碰加杠）`, 'kong');
+        speakAction('杠', game.currentPlayer);
+        // 找到对应的碰并升级为杠
+        const meldIndex = ai.melds.findIndex(m => m.type === 'pong' && m.tiles[0].type === tile.type);
+        if (meldIndex !== -1) {
+          const oldPong = ai.melds[meldIndex];
+          ai.melds.splice(meldIndex, 1);
+          ai.melds.push({
+            type: 'kong',
+            tiles: [...oldPong.tiles, tile]
+          });
+          // 从手牌移除
+          const handIdx = ai.hand.findIndex(t => t.id === tile.id);
+          if (handIdx !== -1) ai.hand.splice(handIdx, 1);
+        }
+      } else {
+        // 暗杠
+        logEvent(`<span class="log-player">${playerName}</span>暗杠`, 'kong');
+        speakAction('杠', game.currentPlayer);
+        // 从手牌移除4张
+        const indices = [];
+        ai.hand.forEach((t, i) => {
+          if (t.type === tile.type && indices.length < 4) indices.push(i);
+        });
+        indices.sort((a, b) => b - a).forEach(i => ai.hand.splice(i, 1));
+        ai.melds = ai.melds || [];
+        ai.melds.push({
+          type: 'kong',
+          tiles: [{ type: tile.type }, { type: tile.type }, { type: tile.type }, { type: tile.type }]
+        });
+      }
+
+      // 杠后摸牌继续
+      renderAIMelds();
+      renderAIBacks();
+      updateWall();
+      game.lastAction = 'kong';
+
+      // 杠后摸一张牌，继续该玩家的回合
+      safeDelay(() => {
+        const drawnTile = drawTile(ai, game.wall);
+        if (drawnTile) {
+          logEvent(`<span class="log-player">${playerName}</span>摸牌`, 'draw');
+          // 检查是否有人可以抢杠胡
+          game.state = GameState.RESPONDING;
+          safeDelay(() => {
+            if (!checkRobKongHu(ai, tile, game.currentPlayer)) {
+              // 继续该玩家的回合
+              const nextAction = ai.decide(drawnTile);
+              if (nextAction.type === 'win') {
+                clearAllTimeouts();
+                logEvent(`🎉 <span class="log-player">${playerName}</span>自摸胡牌！`, 'win');
+                game.state = GameState.GAMEOVER;
+                revealAllHands(game.currentPlayer, true, false);
+              } else if (nextAction.type === 'discard') {
+                discardTile(ai, nextAction.tileId);
+                game.lastDiscard = ai.pool[ai.pool.length - 1];
+                game.lastDrawer = game.currentPlayer;
+                if (game.lastDiscard) {
+                  speakTileName(game.lastDiscard.type, game.currentPlayer);
+                  logEvent(`<span class="log-player">${playerName}</span>打出了 <span class="log-tile">${game.lastDiscard.name || game.lastDiscard.type}</span>`, 'discard');
+                }
+                renderPool();
+                renderAIBacks();
+                updateWall();
+                game.state = GameState.RESPONDING;
+                checkAIResponse();
+              }
+            }
+          }, 300);
+        } else {
+          logEvent('❌ 牌山已空，流局', 'win');
+          game.state = GameState.GAMEOVER;
+        }
+      }, 300);
+      return;
 
     case 'pong':
       logEvent(`<span class="log-player">${playerName}</span>碰了`, 'pong');
@@ -1572,58 +1654,56 @@ function handlePlayerAction(action) {
       break;
       
     case 'kong':
-      // 杠：两种情况
-      // 1. 从碰加杠 - 只能在摸牌后进行（手牌1张+已有的碰3张）
+      // 杠：三种情况
+      // 1. 从碰加杠（摸牌后）- 使用 game.kongTile
       // 2. 明杠 - 响应别人打出的牌（手牌3张+打出的1张）
-      if (lastTile) {
-        Sound.playKong();
-        // 语音播报动作"杠"
-        speakAction('杠', 0);
+      // 3. 暗杠 - 手牌4张
+      Sound.playKong();
+      speakAction('杠', 0);
 
-        // 判断是否是摸牌后的从碰加杠
-        // 摸牌后 lastTile 在手牌中，响应别人时 lastTile 是别人打出的牌
-        const isAfterDraw = player.hand.some(t => t.id === lastTile.id);
+      // 检查是否是从碰加杠（摸牌后，有 game.kongTile）
+      if (game.kongTile && canKongFromPong(player, game.kongTile)) {
+        // 从碰加杠
+        const kongTile = game.kongTile;
+        const meldIndex = player.melds.findIndex(m => m.type === 'pong' && m.tiles[0].type === kongTile.type);
+        if (meldIndex !== -1) {
+          // 移除旧的碰，添加新的杠
+          const oldPong = player.melds[meldIndex];
+          player.melds.splice(meldIndex, 1);
+          player.melds.push({
+            type: 'kong',
+            tiles: [...oldPong.tiles, kongTile]
+          });
+          // 从手牌移除1张
+          const handIdx = player.hand.findIndex(t => t.id === kongTile.id);
+          if (handIdx !== -1) player.hand.splice(handIdx, 1);
+          game.kongTile = null;  // 清除
 
-        if (isAfterDraw && canKongFromPong(player, lastTile)) {
-          // 从碰加杠（只能在自己摸牌后）
-          const meldIndex = player.melds.findIndex(m => m.type === 'pong' && m.tiles[0].type === lastTile.type);
-          if (meldIndex !== -1) {
-            // 移除旧的碰，添加新的杠
-            const oldPong = player.melds[meldIndex];
-            player.melds.splice(meldIndex, 1);
-            player.melds.push({
-              type: 'kong',
-              tiles: [...oldPong.tiles, lastTile]
-            });
-            // 从手牌移除1张
-            const handIdx = player.hand.findIndex(t => t.id === lastTile.id);
-            if (handIdx !== -1) player.hand.splice(handIdx, 1);
-            game.lastDiscard = null;
-            
+          renderPlayerHand();
+          renderMelds('kong');
+          renderPool();
+
+          // 杠后需要再摸一张牌
+          const drawnTile = drawTile(player, game.wall);
+          if (drawnTile) {
+            Sound.playDraw();
+            logEvent(`<span class="log-player">你</span>杠了 <span class="log-tile">${kongTile.name || kongTile.type}</span>（从碰加杠），摸到了 <span class="log-tile">${drawnTile.name || drawnTile.type}</span>，打一张牌`, 'kong');
+            game.lastAction = 'kong';
+            player.hand.sort((a, b) => a.type.localeCompare(b.type));
             renderPlayerHand();
-            renderMelds('kong');
-            renderPool();
-
-            // 杠后需要再摸一张牌
-            const drawnTile = drawTile(player, game.wall);
-            if (drawnTile) {
-              Sound.playDraw();
-              logEvent(`<span class="log-player">你</span>杠了 <span class="log-tile">${lastTileName}</span>（从碰加杠），摸到了 <span class="log-tile">${drawnTile.name || drawnTile.type}</span>，打一张牌`, 'kong');
-              // 标记刚刚进行了杠，用于检测抢杠胡
-              game.lastAction = 'kong';
-              player.hand.sort((a, b) => a.type.localeCompare(b.type));
-              renderPlayerHand();
-              updateWall();
-              game.state = GameState.DRAWING;
-              elements.actions.chi.disabled = true;
-              elements.actions.pong.disabled = true;
-              elements.actions.kong.disabled = true;
-              elements.actions.win.disabled = true;
-              elements.actions.pass.disabled = true;
-              clearAllTimeouts();
-              checkPlayerActions();
-            }
+            updateWall();
+            game.state = GameState.DRAWING;
+            elements.actions.chi.disabled = true;
+            elements.actions.pong.disabled = true;
+            elements.actions.kong.disabled = true;
+            elements.actions.win.disabled = true;
+            elements.actions.pass.disabled = true;
+            clearAllTimeouts();
+            checkPlayerActions();
           }
+        }
+      } else if (lastTile) {
+        // 明杠 - 响应别人打出的牌
         } else {
           // 直接明杠 - 手牌3张+打出的1张
           const indices = [];

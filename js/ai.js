@@ -63,7 +63,14 @@ class AIPlayer {
       return { type: 'win', tile: drawnTile };
     }
 
-    // 检查杠
+    // 检查从碰加杠（摸到的牌和已有的碰组成杠）
+    if (canKongFromPong(this.player, drawnTile)) {
+      if (this.shouldKong(drawnTile)) {
+        return { type: 'kong', tileId: drawnTile.id, kongType: 'fromPong' };
+      }
+    }
+
+    // 检查暗杠（手牌4张）
     if (canKong(this.player.hand, drawnTile, true)) {
       if (this.shouldKong(drawnTile)) {
         return { type: 'kong', tileId: drawnTile.id };
