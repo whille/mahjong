@@ -919,7 +919,8 @@ function handleAIKong(ai, tile, fromPlayerIndex) {
     ai.melds = ai.melds || [];
     ai.melds.push({
       type: 'kong',
-      tiles: [{type:tile.type}, {type:tile.type}, {type:tile.type}, tile]
+      tiles: [{type:tile.type}, {type:tile.type}, {type:tile.type}, tile],
+      concealed: false  // 明杠
     });
     // 从打出这张牌的玩家的牌池中移除
     if (fromPlayerIndex !== undefined) {
@@ -1093,7 +1094,8 @@ function aiTurn() {
           ai.melds.splice(meldIndex, 1);
           ai.melds.push({
             type: 'kong',
-            tiles: [...oldPong.tiles, tile]
+            tiles: [...oldPong.tiles, tile],
+            concealed: false  // 从碰加杠是明杠
           });
           // 从手牌移除
           const handIdx = ai.hand.findIndex(t => t.id === tile.id);
@@ -1112,7 +1114,8 @@ function aiTurn() {
         ai.melds = ai.melds || [];
         ai.melds.push({
           type: 'kong',
-          tiles: [{ type: tile.type }, { type: tile.type }, { type: tile.type }, { type: tile.type }]
+          tiles: [{ type: tile.type }, { type: tile.type }, { type: tile.type }, { type: tile.type }],
+          concealed: true  // 暗杠
         });
       }
 
@@ -1668,7 +1671,7 @@ function handlePlayerAction(action) {
         if (meldIndex !== -1) {
           const oldPong = player.melds[meldIndex];
           player.melds.splice(meldIndex, 1);
-          player.melds.push({ type: 'kong', tiles: [...oldPong.tiles, kongTile] });
+          player.melds.push({ type: 'kong', tiles: [...oldPong.tiles, kongTile], concealed: false });
           const handIdx = player.hand.findIndex(t => t.id === kongTile.id);
           if (handIdx !== -1) player.hand.splice(handIdx, 1);
           game.kongTile = null;
@@ -1704,7 +1707,7 @@ function handlePlayerAction(action) {
         if (indices.length === 3) {
           indices.sort((a, b) => b - a).forEach(i => player.hand.splice(i, 1));
           player.melds = player.melds || [];
-          player.melds.push({ type: 'kong', tiles: [{ type: lastTile.type }, { type: lastTile.type }, { type: lastTile.type }, lastTile] });
+          player.melds.push({ type: 'kong', tiles: [{ type: lastTile.type }, { type: lastTile.type }, { type: lastTile.type }, lastTile], concealed: false });
           if (player.pool.length > 0) player.pool.pop();
           game.lastDiscard = null;
 

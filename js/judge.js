@@ -13,7 +13,9 @@ const FanType = {
   SI_AN_KE: { name: '四暗刻', score: 6 },
   SAN_AN_KE: { name: '三暗刻', score: 2 },
   ZI_MO: { name: '自摸', score: 1 },
-  GANG_KAI: { name: '杠开', score: 2 }
+  GANG_KAI: { name: '杠开', score: 2 },
+  MING_GANG: { name: '明杠', score: 1 },
+  AN_GANG: { name: '暗杠', score: 2 }
 };
 
 // 国士无双需要的13张牌
@@ -294,6 +296,20 @@ function calcScore(hand, melds = [], isZimo = false, isGangshanghua = false) {
   if (isGangshanghua) {
     fanTypes.push(FanType.GANG_KAI);
     fans += FanType.GANG_KAI.score;
+  }
+
+  // 杠牌番数（明杠1番，暗杠2番）
+  if (melds) {
+    const kongs = melds.filter(m => m.type === 'kong');
+    for (const kong of kongs) {
+      if (kong.concealed) {
+        fanTypes.push(FanType.AN_GANG);
+        fans += FanType.AN_GANG.score;
+      } else {
+        fanTypes.push(FanType.MING_GANG);
+        fans += FanType.MING_GANG.score;
+      }
+    }
   }
 
   // 自摸
