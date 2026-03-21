@@ -1654,10 +1654,9 @@ function handlePlayerAction(action) {
       break;
       
     case 'kong':
-      // 杠：三种情况
+      // 杠：两种情况
       // 1. 从碰加杠（摸牌后）- 使用 game.kongTile
       // 2. 明杠 - 响应别人打出的牌（手牌3张+打出的1张）
-      // 3. 暗杠 - 手牌4张
       Sound.playKong();
       speakAction('杠', 0);
 
@@ -1667,23 +1666,17 @@ function handlePlayerAction(action) {
         const kongTile = game.kongTile;
         const meldIndex = player.melds.findIndex(m => m.type === 'pong' && m.tiles[0].type === kongTile.type);
         if (meldIndex !== -1) {
-          // 移除旧的碰，添加新的杠
           const oldPong = player.melds[meldIndex];
           player.melds.splice(meldIndex, 1);
-          player.melds.push({
-            type: 'kong',
-            tiles: [...oldPong.tiles, kongTile]
-          });
-          // 从手牌移除1张
+          player.melds.push({ type: 'kong', tiles: [...oldPong.tiles, kongTile] });
           const handIdx = player.hand.findIndex(t => t.id === kongTile.id);
           if (handIdx !== -1) player.hand.splice(handIdx, 1);
-          game.kongTile = null;  // 清除
+          game.kongTile = null;
 
           renderPlayerHand();
           renderMelds('kong');
           renderPool();
 
-          // 杠后需要再摸一张牌
           const drawnTile = drawTile(player, game.wall);
           if (drawnTile) {
             Sound.playDraw();
@@ -1703,7 +1696,7 @@ function handlePlayerAction(action) {
           }
         }
       } else if (lastTile) {
-        // 明杠 - 响应别人打出的牌（手牌3张+打出的1张）
+        // 明杠 - 响应别人打出的牌
         const indices = [];
         player.hand.forEach((t, i) => {
           if (t.type === lastTile.type && indices.length < 3) indices.push(i);
@@ -1711,50 +1704,31 @@ function handlePlayerAction(action) {
         if (indices.length === 3) {
           indices.sort((a, b) => b - a).forEach(i => player.hand.splice(i, 1));
           player.melds = player.melds || [];
-          player.melds.push({
-            type: 'kong',
-            tiles: [
-              { type: lastTile.type },
-              { type: lastTile.type },
-              { type: lastTile.type },
-              lastTile
-            ]
-          });
-          // 移除打出的牌
-          if (player.pool.length > 0) {
-            player.pool.pop();
-          }
-          // 清除 lastDiscard
+          player.melds.push({ type: 'kong', tiles: [{ type: lastTile.type }, { type: lastTile.type }, { type: lastTile.type }, lastTile] });
+          if (player.pool.length > 0) player.pool.pop();
           game.lastDiscard = null;
-            
-            renderPlayerHand();
-            renderMelds('kong');
-            renderPool();
 
-            // 杠后需要再摸一张牌
-            const drawnTile = drawTile(player, game.wall);
-            if (drawnTile) {
-              Sound.playDraw();
-              logEvent(`<span class="log-player">你</span>杠了 <span class="log-tile">${lastTileName}</span>，摸到了 <span class="log-tile">${drawnTile.name || drawnTile.type}</span>，打一张牌`, 'kong');
-              // 标记刚刚进行了杠，用于检测抢杠胡
-              game.lastAction = 'kong';
-              // 排序手牌
-              player.hand.sort((a, b) => a.type.localeCompare(b.type));
-              renderPlayerHand();
-              updateWall();
-              
-              game.state = GameState.DRAWING;
-              elements.actions.chi.disabled = true;
-              elements.actions.pong.disabled = true;
-              elements.actions.kong.disabled = true;
-              elements.actions.win.disabled = true;
-              
-              // 检查是否能自摸
-              checkPlayerActions();
-            } else {
-              logEvent('❌ 牌山已空，流局', 'win');
-              game.state = GameState.GAMEOVER;
-            }
+          renderPlayerHand();
+          renderMelds('kong');
+          renderPool();
+
+          const drawnTile = drawTile(player, game.wall);
+          if (drawnTile) {
+            Sound.playDraw();
+            logEvent(`<span class="log-player">你</span>杠了 <span class="log-tile">${lastTileName}</span>，摸到了 <span class="log-tile">${drawnTile.name || drawnTile.type}</span>，打一张牌`, 'kong');
+            game.lastAction = 'kong';
+            player.hand.sort((a, b) => a.type.localeCompare(b.type));
+            renderPlayerHand();
+            updateWall();
+            game.state = GameState.DRAWING;
+            elements.actions.chi.disabled = true;
+            elements.actions.pong.disabled = true;
+            elements.actions.kong.disabled = true;
+            elements.actions.win.disabled = true;
+            checkPlayerActions();
+          } else {
+            logEvent('❌ 牌山已空，流局', 'win');
+            game.state = GameState.GAMEOVER;
           }
         }
       }
