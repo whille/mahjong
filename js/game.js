@@ -716,6 +716,9 @@ function checkAIResponse() {
 
   const lastTileName = lastTile.name || lastTile.type;
 
+  // 获取打牌者（使用 lastDrawer 记录的打牌者）
+  const discardPlayer = game.lastDrawer !== undefined ? game.lastDrawer : game.currentPlayer;
+
   // 读取超时设置
   const timeoutInput = document.getElementById('timeout-setting');
   const timeoutMs = (parseInt(timeoutInput?.value) || 10) * 1000;
@@ -724,6 +727,11 @@ function checkAIResponse() {
   // 玩家打完牌后，逆时针检查：西家(3)->北家(2)->东家(1)
   // 优先级: 胡 > 杠 > 碰 > 吃
   for (let i = 3; i >= 1; i--) {
+    // 跳过打出这张牌的玩家自己
+    if (i === discardPlayer) {
+      continue;
+    }
+
     const ai = game.players[i];
     const playerName = PLAYER_VOICES[i].name;
 
@@ -746,8 +754,8 @@ function checkAIResponse() {
       responses.push({ type: 'pong', priority: 2 });
     }
 
-    // 检查吃 (上家才能吃) - 上家是 (当前打牌者 + 3) % 4
-    const upperPlayer = (game.currentPlayer + 3) % 4;
+    // 检查吃 (上家才能吃) - 上家是 (打牌者 + 3) % 4
+    const upperPlayer = (discardPlayer + 3) % 4;
     if (i === upperPlayer && canChow(ai.hand, lastTile)) {
       responses.push({ type: 'chow', priority: 1 });
     }
@@ -779,7 +787,7 @@ function checkAIResponse() {
             logEvent(`<span class="log-player">${playerName}</span>杠了 <span class="log-tile">${lastTileName}</span>（要${lastTileName}）`, 'kong');
             // 语音播报动作"杠"
             speakAction('杠', i);
-            handleAIKong(ai, lastTile, game.currentPlayer);
+            handleAIKong(ai, lastTile, discardPlayer);
             renderPool();
             renderAIMelds();
             renderAIBacks();
@@ -813,7 +821,7 @@ function checkAIResponse() {
             logEvent(`<span class="log-player">${playerName}</span>碰了 <span class="log-tile">${lastTileName}</span>`, 'pong');
             // 语音播报动作"碰"
             speakAction('碰', i);
-            handleAIPong(ai, lastTile, game.currentPlayer);
+            handleAIPong(ai, lastTile, discardPlayer);
             renderPool();
             renderAIMelds();
             renderAIBacks();
@@ -829,7 +837,7 @@ function checkAIResponse() {
             logEvent(`<span class="log-player">${playerName}</span>吃了 <span class="log-tile">${lastTileName}</span>（要${lastTileName}）`, 'chow');
             // 语音播报动作"吃"
             speakAction('吃', i);
-            handleAIChow(ai, lastTile, game.currentPlayer);
+            handleAIChow(ai, lastTile, discardPlayer);
             renderPool();
             renderAIMelds();
             renderAIBacks();
