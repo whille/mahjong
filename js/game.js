@@ -905,34 +905,54 @@ function handleAIKong(ai, tile, fromPlayerIndex) {
 function handleAIChow(ai, tile, fromPlayerIndex) {
   const suit = tile.type.replace(/\d/g, '');
   const num = parseInt(tile.type.replace(/\D/g, ''));
-  const needed = [`${suit}${num - 1}`, `${suit}${num + 1}`];
-  
-  const indices = [];
-  needed.forEach(need => {
-    const idx = ai.hand.findIndex(t => t.type === need);
-    if (idx !== -1) indices.push({ idx, type: need });
-  });
-  
-  if (indices.length === 2) {
-    indices.sort((a, b) => b.idx - a.idx).forEach(item => ai.hand.splice(item.idx, 1));
-    ai.melds = ai.melds || [];
-    ai.melds.push({
-      type: 'chow',
-      tiles: [
-        { type: needed[0] },
-        tile,
-        { type: needed[1] }
-      ].sort((a, b) => a.type.localeCompare(b.type))
-    });
-    // 从打出这张牌的玩家的牌池中移除
-    if (fromPlayerIndex !== undefined) {
-      const fromPlayer = game.players[fromPlayerIndex];
-      if (fromPlayer && fromPlayer.pool.length > 0) {
-        fromPlayer.pool.pop();
-      }
+
+  // 检查所有可能的顺子组合，与 canChow 保持一致
+  const possibleCombinations = [
+    [num - 2, num - 1],  // 打出的牌作为第三张
+    [num - 1, num + 1],  // 打出的牌作为中间
+    [num + 1, num + 2]   // 打出的牌作为第一张
+  ];
+
+  // 找到第一个可行的组合
+  let foundCombination = null;
+  for (const [n1, n2] of possibleCombinations) {
+    if (n1 < 1 || n2 > 9) continue;
+    const needed = [`${suit}${n1}`, `${suit}${n2}`];
+    const hasAll = needed.every(need => ai.hand.some(t => t.type === need));
+    if (hasAll) {
+      foundCombination = needed;
+      break;
     }
-    // 清除 lastDiscard
-    game.lastDiscard = null;
+  }
+
+  if (foundCombination) {
+    const indices = [];
+    foundCombination.forEach(need => {
+      const idx = ai.hand.findIndex(t => t.type === need);
+      if (idx !== -1) indices.push({ idx, type: need });
+    });
+
+    if (indices.length === 2) {
+      indices.sort((a, b) => b.idx - a.idx).forEach(item => ai.hand.splice(item.idx, 1));
+      ai.melds = ai.melds || [];
+      ai.melds.push({
+        type: 'chow',
+        tiles: [
+          { type: foundCombination[0] },
+          tile,
+          { type: foundCombination[1] }
+        ].sort((a, b) => a.type.localeCompare(b.type))
+      });
+      // 从打出这张牌的玩家的牌池中移除
+      if (fromPlayerIndex !== undefined) {
+        const fromPlayer = game.players[fromPlayerIndex];
+        if (fromPlayer && fromPlayer.pool.length > 0) {
+          fromPlayer.pool.pop();
+        }
+      }
+      // 清除 lastDiscard
+      game.lastDiscard = null;
+    }
   }
 }
 
