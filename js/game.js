@@ -1117,6 +1117,7 @@ function aiDiscardAfterAction() {
   if (action && action.type === 'discard') {
     discardTile(ai, action.tileId);
     game.lastDiscard = ai.pool[ai.pool.length - 1];
+    game.lastDrawer = game.currentPlayer;  // 记录打牌者
     // AI 打牌时语音播报
     if (game.lastDiscard) {
       speakTileName(game.lastDiscard.type, game.currentPlayer);
