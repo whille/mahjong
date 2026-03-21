@@ -1293,6 +1293,92 @@ header .config-area input {
   }
 }
 
+/* 竖屏手机模式 */
+@media (max-width: 768px) and (orientation: portrait) {
+  /* 隐藏战况记录面板 */
+  .log-panel {
+    display: none;
+    position: fixed;
+    right: 10px;
+    top: 60px;
+    width: calc(100vw - 20px);
+    max-width: 320px;
+    max-height: 60vh;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  }
+
+  /* 战况记录展开时显示 */
+  .log-panel.show {
+    display: flex;
+  }
+
+  /* 战况切换按钮 */
+  .log-toggle-btn {
+    display: block;
+    position: fixed;
+    right: 10px;
+    top: 10px;
+    z-index: 1001;
+    background: var(--accent-gold);
+    color: #1a1a2e;
+    border: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  /* 调整游戏容器 */
+  .game-container {
+    padding: 5px;
+  }
+
+  header {
+    padding: 8px;
+    margin-bottom: 5px;
+  }
+
+  header h1 {
+    font-size: 1rem;
+  }
+
+  /* 调整牌桌 */
+  .mahjong-table {
+    padding: 5px;
+    min-height: auto;
+  }
+
+  /* 调整中央区域 */
+  .center-area {
+    min-width: 60px;
+    min-height: 60px;
+  }
+
+  .wall-count {
+    font-size: 0.9rem;
+  }
+
+  /* 调整按钮区域 */
+  .action-buttons {
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .action-btn {
+    padding: 8px 12px;
+    font-size: 0.8rem;
+    min-width: 50px;
+  }
+}
+
+/* 默认隐藏战况切换按钮（非竖屏不显示） */
+.log-toggle-btn {
+  display: none;
+}
+
 /* ============================================
    动画系统 (Animation System)
    ============================================ */

@@ -1713,6 +1713,14 @@ function handlePlayerAction(action) {
   }
 }
 
+// 切换战况记录面板（竖屏手机用）
+function toggleLogPanel() {
+  const logPanel = document.getElementById('log-panel');
+  if (logPanel) {
+    logPanel.classList.toggle('show');
+  }
+}
+
 // 启动游戏
 document.addEventListener('DOMContentLoaded', () => {
   // 先测试牌逻辑
