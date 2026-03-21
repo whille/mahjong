@@ -72,7 +72,17 @@ class AIPlayer {
 
     // 打牌策略
     const toDiscard = this.chooseDiscard();
-    return { type: 'discard', tileId: toDiscard.id };
+    if (toDiscard) {
+      return { type: 'discard', tileId: toDiscard.id };
+    }
+
+    // 防御性代码：无法选择打出的牌
+    console.error('[advancedDecide] 无法选择打出的牌');
+    const randomIndex = Math.floor(Math.random() * this.player.hand.length);
+    if (this.player.hand[randomIndex]) {
+      return { type: 'discard', tileId: this.player.hand[randomIndex].id };
+    }
+    return { type: 'pass' };
   }
 
   // 碰/吃后直接打牌（不摸牌）
@@ -84,7 +94,13 @@ class AIPlayer {
 
     // 打牌策略
     const toDiscard = this.chooseDiscard();
-    return { type: 'discard', tileId: toDiscard.id };
+    if (toDiscard) {
+      return { type: 'discard', tileId: toDiscard.id };
+    }
+
+    // 防御性代码：无法选择打出的牌，返回 pass
+    console.error('[decideDiscardAfterAction] 无法选择打出的牌');
+    return { type: 'pass' };
   }
 
   // 响应其他玩家打出的牌
@@ -239,7 +255,14 @@ class AIPlayer {
     }
 
     // 4. 随机打一张
-    return hand[Math.floor(Math.random() * hand.length)];
+    const randomTile = hand[Math.floor(Math.random() * hand.length)];
+    if (randomTile) {
+      return randomTile;
+    }
+
+    // 防御性代码：手牌为空时不应该到达这里
+    console.error('[chooseDiscard] 手牌为空，无法选择打出的牌');
+    return null;
   }
 
   // 困难AI：筋牌防御
@@ -268,7 +291,13 @@ class AIPlayer {
       return safeTiles[0].tile;
     }
 
-    return tileScores[0].tile;
+    // 防御性代码：检查是否有可选的牌
+    if (tileScores.length > 0) {
+      return tileScores[0].tile;
+    }
+
+    console.error('[hardChooseDiscard] 手牌为空，无法选择打出的牌');
+    return null;
   }
 
   // 获取所有可见牌
