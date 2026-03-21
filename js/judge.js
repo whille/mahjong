@@ -148,19 +148,30 @@ function canPong(hand, discardedTile) {
 function canChow(hand, discardedTile) {
   const suit = discardedTile.type.replace(/\d/g, '');
   const num = parseInt(discardedTile.type.replace(/\D/g, ''));
-  
+
   // 字牌不能吃
   if (!['wan', 'sou', 'pin'].includes(suit)) return false;
-  if (num < 1 || num > 7) return false; // 只有1-7才能吃
-  
-  const needed = [
-    `${suit}${num - 1}`,
-    `${suit}${num + 1}`
+
+  // 检查所有可能的顺子组合
+  // 打出的牌作为顺子的: 第一张(num-2,num-1)、中间(num-1,num+1)、最后(num+1,num+2)
+  const possibleCombinations = [
+    [num - 2, num - 1],  // 打出的牌作为第三张: 如打7，需要5,6
+    [num - 1, num + 1],  // 打出的牌作为中间: 如打7，需要6,8
+    [num + 1, num + 2]   // 打出的牌作为第一张: 如打7，需要8,9
   ];
-  
-  return needed.every(neededType => 
-    hand.some(t => t.type === neededType)
-  );
+
+  for (const [n1, n2] of possibleCombinations) {
+    // 检查数字是否在有效范围内
+    if (n1 < 1 || n2 > 9) continue;
+
+    const needed = [`${suit}${n1}`, `${suit}${n2}`];
+    const hasAll = needed.every(neededType =>
+      hand.some(t => t.type === neededType)
+    );
+    if (hasAll) return true;
+  }
+
+  return false;
 }
 
 /**

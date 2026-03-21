@@ -519,11 +519,19 @@ function initGame() {
   elements.restartArea.style.display = 'none';
   const revealArea = document.getElementById('reveal-area');
   if (revealArea) revealArea.remove();
-  
+
   // 清空日志
   const logContent = document.getElementById('log-content');
   if (logContent) logContent.innerHTML = '';
-  
+
+  // 清除所有副露区域的显示
+  elements.playerMelds.innerHTML = '';
+  for (let i = 1; i < 4; i++) {
+    if (elements.players[i].melds) {
+      elements.players[i].melds.innerHTML = '';
+    }
+  }
+
   showMessage('🀄 初始化游戏...');
   logEvent('🀄 游戏开始！');
   
@@ -645,6 +653,9 @@ function playerDiscard(tileId) {
   // // // console.log(discardTile result:', tile);
 
   if (tile) {
+    // 设置动画锁，防止连续点击
+    startAnimation();
+
     Sound.playDiscard();
     // 语音播报牌名，使用玩家0的声音
     speakTileName(tile.type, 0);
@@ -707,7 +718,7 @@ function checkAIResponse() {
 
   // 读取超时设置
   const timeoutInput = document.getElementById('timeout-setting');
-  const timeoutMs = (parseInt(timeoutInput?.value) || 30) * 1000;
+  const timeoutMs = (parseInt(timeoutInput?.value) || 10) * 1000;
 
   // 从下家开始检查 (玩家是0，上家是3，下家是1)
   // 玩家打完牌后，逆时针检查：西家(3)->北家(2)->东家(1)
@@ -748,6 +759,9 @@ function checkAIResponse() {
 
       // 延迟响应，让玩家看到提示
       safeDelay(() => {
+        // 释放动画锁
+        endAnimation();
+
         // 高亮正在响应的玩家
         game.currentPlayer = i;
         highlightCurrentPlayer();
@@ -793,6 +807,20 @@ function checkAIResponse() {
               }
             }, 300);
             return;
+
+          case 'pong':
+            logEvent(`<span class="log-player">${playerName}</span>碰了 <span class="log-tile">${lastTileName}</span>`, 'pong');
+            // 语音播报动作"碰"
+            speakAction('碰', i);
+            handleAIPong(ai, lastTile, game.currentPlayer);
+            renderPool();
+            renderAIMelds();
+            updateWall();
+            // 碰后立即打一张，不摸牌
+            safeDelay(() => {
+              game.currentPlayer = i;
+              aiDiscardAfterAction();
+            }, 300);
             return;
 
           case 'chow':
@@ -816,10 +844,8 @@ function checkAIResponse() {
     }
   }
 
-  // 没有人响应，进入下一家（从打牌者的下家开始）
-  // 玩家打牌后，下一家是西家(3)
-  // console.log([checkAIResponse] 无人响应，玩家打牌后轮转到西家');
-  safeDelay(() => nextPlayer(0), 500);
+  // AI 没有响应，检查玩家是否可以响应
+  checkPlayerResponse();
 }
 
 // AI 执行碰
@@ -1019,9 +1045,9 @@ function aiTurn() {
   renderPool();
   updateWall();
 
-  // AI 打牌后，检查玩家是否要碰/杠/胡
+  // AI 打牌后，检查其他玩家是否要响应（包括其他 AI 和玩家）
   game.state = GameState.RESPONDING;
-  safeDelay(() => checkPlayerResponse(), 500);
+  checkAIResponse();
 }
 
 // AI 在碰/吃后直接打牌（不摸牌）
@@ -1045,23 +1071,32 @@ function aiDiscardAfterAction() {
   renderPool();
   updateWall();
 
-  // AI 打牌后，检查玩家是否要碰/杠/胡
+  // AI 打牌后，检查其他玩家是否要响应（包括其他 AI 和玩家）
   game.state = GameState.RESPONDING;
-  safeDelay(() => checkPlayerResponse(), 500);
+  checkAIResponse();
 }
 
 // 检查玩家是否要响应 (碰/杠/胡)
 function checkPlayerResponse() {
+  // 清除之前的超时，避免干扰
+  if (game.passTimeout) {
+    clearTimeout(game.passTimeout);
+    game.passTimeout = null;
+  }
+
   const player = game.players[0];
   const lastTile = game.lastDiscard;
   const lastTileName = lastTile ? (lastTile.name || lastTile.type) : '';
   // 保存当前打牌者（西家/北家/东家打出牌后，检查玩家是否要响应）
-  const currentDrawer = game.currentPlayer;
+  // 使用 lastDrawer 而不是 currentPlayer，因为 currentPlayer 可能已被 AI 响应修改
+  const currentDrawer = game.lastDrawer !== undefined ? game.lastDrawer : game.currentPlayer;
   const discardPlayerName = PLAYER_VOICES[currentDrawer].name;
-  // console.log([checkPlayerResponse] 当前打牌者:', currentDrawer, '打出的牌:', lastTileName);
+  console.log('[checkPlayerResponse] 当前打牌者:', currentDrawer, discardPlayerName, '打出的牌:', lastTileName);
+  console.log('[checkPlayerResponse] 玩家手牌数:', player.hand.length, '手牌:', player.hand.map(t => t.type));
+  console.log('[checkPlayerResponse] 玩家副露:', player.melds ? player.melds.map(m => `${m.type}: ${m.tiles.map(t => t.type).join(',')}`) : '无');
 
   if (!lastTile) {
-    // console.log([checkPlayerResponse] 无lastTile，调用nextPlayer');
+    console.log('[checkPlayerResponse] 无lastTile，调用nextPlayer');
     nextPlayer(currentDrawer);
     return;
   }
@@ -1078,8 +1113,32 @@ function checkPlayerResponse() {
 
   // 检查胡 (抢杠胡/点炮) - 最高优先级
   const isFromKong = game.lastAction === 'kong';
-  const testHand = [...player.hand, lastTile];
-  if (canWin(testHand)) {
+
+  // 计算总牌数：手牌 + 副露 + 打出的牌
+  let testHand = [...player.hand, lastTile];
+
+  // 如果有副露，把副露牌也加入
+  const meldTiles = player.melds ? player.melds.flatMap(m => m.tiles) : [];
+  const totalTiles = testHand.length + meldTiles.length;
+
+  // 计算杠的数量（每个杠会增加1张牌）
+  const kongCount = player.melds ? player.melds.filter(m => m.type === 'kong').length : 0;
+  const expectedTiles = 14 + kongCount;
+
+  console.log('[checkPlayerResponse] 手牌:', testHand.length, '副露:', meldTiles.length, '总计:', totalTiles, '预期:', expectedTiles);
+
+  // 胡牌需要正确数量的牌（14 + 杠的数量）
+  let canWinResult = false;
+  if (totalTiles === expectedTiles) {
+    // 把副露牌也加入 testHand 进行判断
+    const fullHand = [...testHand, ...meldTiles];
+    canWinResult = canWin(fullHand);
+  }
+
+  console.log('[checkPlayerResponse] 测试手牌:', testHand.map(t => t.type), '测试胡牌...');
+  console.log('[checkPlayerResponse] canWin 结果:', canWinResult);
+
+  if (canWinResult) {
     elements.actions.win.disabled = false;
     if (isFromKong) {
       logEvent(`🔔 <span class="log-player">你</span>可以抢杠胡 ${lastTileName}！`, 'win');
@@ -1115,23 +1174,14 @@ function checkPlayerResponse() {
     logEvent(`🔔 <span class="log-player">你</span>可以杠 ${lastTileName}！`, 'kong');
   }
 
-  // 检查吃 (上家打出的牌) - 最低优先级
-  // 你的上家是西家(3)，只有上家打的牌才能吃
-  const prevPlayer = (currentDrawer + 3) % 4;
-  if (prevPlayer === 0 && canChow(player.hand, lastTile)) {
+  // 检查吃 (只有打牌者的下家才能吃) - 最低优先级
+  // 逆时针顺序：南家(0) → 西家(3) → 北家(2) → 东家(1) → 南家(0)
+  // 打牌者的下家 = (currentDrawer + 3) % 4
+  // 玩家(0)能吃，当且仅当玩家是打牌者的下家
+  const nextPlayer = (currentDrawer + 3) % 4;
+  if (nextPlayer === 0 && canChow(player.hand, lastTile)) {
     elements.actions.chi.disabled = false;
-    const suit = lastTile.type.replace(/\d/g, '');
-    const num = parseInt(lastTile.type.replace(/\D/g, ''));
-    const chow1 = `${suit}${num - 1}`;
-    const chow2 = `${suit}${num + 1}`;
-    const TILE_NAMES = {
-      wan1:'一万',wan2:'二万',wan3:'三万',wan4:'四万',wan5:'五万',wan6:'六万',wan7:'七万',wan8:'八万',wan9:'九万',
-      sou1:'一索',sou2:'二索',sou3:'三索',sou4:'四索',sou5:'五索',sou6:'六索',sou7:'七索',sou8:'八索',sou9:'九索',
-      pin1:'一筒',pin2:'二筒',pin3:'三筒',pin4:'四筒',pin5:'五筒',pin6:'六筒',pin7:'七筒',pin8:'八筒',pin9:'九筒'
-    };
-    const name1 = TILE_NAMES[chow1] || chow1;
-    const name2 = TILE_NAMES[chow2] || chow2;
-    logEvent(`🔔 <span class="log-player">你</span>可以吃 ${name1}${name2}！`, 'chow');
+    logEvent(`🔔 <span class="log-player">你</span>可以吃 <span class="log-tile">${lastTileName}</span>！`, 'chow');
   }
 
   // 如果有操作选项，启用跳过按钮
@@ -1142,10 +1192,12 @@ function checkPlayerResponse() {
 
   // 读取超时设置
   const timeoutInput = document.getElementById('timeout-setting');
-  const timeoutMs = (parseInt(timeoutInput?.value) || 30) * 1000;
+  const timeoutMs = (parseInt(timeoutInput?.value) || 10) * 1000;
+  console.log('[checkPlayerResponse] 超时设置:', timeoutMs / 1000, '秒');
 
   // 超时后自动跳过
   game.passTimeout = safeDelay(() => {
+    console.log('[checkPlayerResponse] 超时触发，自动跳过');
     if (elements.actions.pass && !elements.actions.pass.disabled) {
       handlePlayerAction('pass');
     }
@@ -1158,6 +1210,8 @@ function checkPlayerResponse() {
       elements.actions.kong.disabled &&
       elements.actions.win.disabled) {
     // console.log([checkPlayerResponse] 无操作，跳过');
+    // 释放动画锁
+    endAnimation();
     // 无操作时，去打牌者的下家（逆时针）
     // 如果是AI打牌，玩家不响应，去北家
     // 如果是玩家打牌，玩家不响应，去西家
@@ -1305,20 +1359,24 @@ function renderAIMelds() {
   for (let i = 1; i < 4; i++) {
     const el = elements.players[i].melds;
     if (!el) continue;
-    
+
     const player = game.players[i];
     if (!player.melds || player.melds.length === 0) {
       el.innerHTML = '';
       continue;
     }
-    
+
+    // 东西家（i=1 东家, i=3 西家）使用竖向排列，北家（i=2）使用横向排列
+    const isVertical = (i === 1 || i === 3);
+
     el.innerHTML = player.melds.map(meld => {
       // 副露显示：全部亮出（明牌）
       const tiles = meld.tiles.map((tile, idx) => {
         // 碰/杠/吃全部亮出（明牌）
         return `<img class="tile-back-small" src="assets/tiles/${tile.type}.png">`;
       }).join('');
-      return `<div class="meld horizontal">${tiles}</div>`;
+      // 东西家用 vertical，北家用 horizontal
+      return `<div class="meld ${isVertical ? 'vertical' : 'horizontal'}">${tiles}</div>`;
     }).join('');
   }
 }
@@ -1333,6 +1391,8 @@ function renderGame() {
   renderPlayerHand();
   renderPool();
   renderAIBacks();
+  renderMelds();
+  renderAIMelds();
   updateWall();
 }
 
@@ -1561,33 +1621,50 @@ function handlePlayerAction(action) {
         }
       }
       break;
-      
+
     case 'chi':
-      // 吃：需要选择具体组合，这里简化为直接吃
+      // 吃：找到能组成顺子的牌
       if (lastTile) {
         Sound.playChow();
         // 语音播报动作"吃"
         speakAction('吃', 0);
-        // 简化：找到能组成顺子的牌
+
+        // 找到所有可能的顺子组合
         const suit = lastTile.type.replace(/\d/g, '');
         const num = parseInt(lastTile.type.replace(/\D/g, ''));
-        const needed = [`${suit}${num - 1}`, `${suit}${num + 1}`];
-        
-        const indices = [];
-        needed.forEach(need => {
-          const idx = player.hand.findIndex(t => t.type === need);
-          if (idx !== -1) indices.push({ idx, type: need });
-        });
-        
-        if (indices.length === 2) {
+        const possibleCombinations = [
+          [num - 2, num - 1],  // 打出的牌作为第三张
+          [num - 1, num + 1],  // 打出的牌作为中间
+          [num + 1, num + 2]   // 打出的牌作为第一张
+        ];
+
+        // 找到第一个可行的组合
+        let foundCombination = null;
+        for (const [n1, n2] of possibleCombinations) {
+          if (n1 < 1 || n2 > 9) continue;
+          const needed = [`${suit}${n1}`, `${suit}${n2}`];
+          const hasAll = needed.every(need => player.hand.some(t => t.type === need));
+          if (hasAll) {
+            foundCombination = needed;
+            break;
+          }
+        }
+
+        if (foundCombination) {
+          const indices = [];
+          foundCombination.forEach(need => {
+            const idx = player.hand.findIndex(t => t.type === need);
+            if (idx !== -1) indices.push({ idx, type: need });
+          });
+
           indices.sort((a, b) => b.idx - a.idx).forEach(item => player.hand.splice(item.idx, 1));
           player.melds = player.melds || [];
           player.melds.push({
             type: 'chow',
             tiles: [
-              { type: needed[0] },
+              { type: foundCombination[0] },
               lastTile,
-              { type: needed[1] }
+              { type: foundCombination[1] }
             ].sort((a, b) => a.type.localeCompare(b.type))
           });
           // 移除打出的牌
@@ -1596,7 +1673,7 @@ function handlePlayerAction(action) {
           }
           // 清除 lastDiscard
           game.lastDiscard = null;
-          
+
           renderPlayerHand();
           renderMelds('chow');
           renderPool();
