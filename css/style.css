@@ -419,7 +419,7 @@ header .config-area input {
   background: rgba(26, 26, 46, 0.95);
   border: 2px solid var(--accent-gold);
   border-radius: 8px;
-  display: flex;
+  display: none;  /* 默认隐藏 */
   flex-direction: column;
   z-index: 50;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
@@ -1293,47 +1293,36 @@ header .config-area input {
   }
 }
 
-/* 默认隐藏战况切换按钮（宽度足够时不显示） */
+/* 默认隐藏战况切换按钮 */
 .log-toggle-btn {
-  display: none;
+  display: block;
+  position: fixed;
+  right: 10px;
+  top: 10px;
+  z-index: 1001;
+  background: var(--accent-gold);
+  color: #1a1a2e;
+  border: none;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* 窄屏模式（宽度不足时隐藏战况记录） */
+/* 战况记录展开时显示 */
+.log-panel.show {
+  display: flex;
+}
+
+/* 窄屏模式 */
 @media (max-width: 900px) {
-  /* 隐藏战况记录面板 */
+  /* 战况记录面板窄屏样式 */
   .log-panel {
-    display: none;
-    position: fixed;
-    right: 10px;
-    top: 60px;
     width: calc(100vw - 20px);
     max-width: 320px;
     max-height: 60vh;
-    z-index: 1000;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-  }
-
-  /* 战况记录展开时显示 */
-  .log-panel.show {
-    display: flex;
-  }
-
-  /* 显示战况切换按钮 */
-  .log-toggle-btn {
-    display: block;
-    position: fixed;
-    right: 10px;
-    top: 10px;
-    z-index: 1001;
-    background: var(--accent-gold);
-    color: #1a1a2e;
-    border: none;
-    border-radius: 50%;
-    width: 44px;
-    height: 44px;
-    font-size: 1.2rem;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   }
 
   /* 调整游戏容器 */
