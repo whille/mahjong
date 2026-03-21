@@ -773,8 +773,9 @@ function checkAIResponse() {
     // 获取所有可能的响应，按优先级排序
     const responses = [];
 
-    // 检查杠（从碰加杠或直接明杠）
-    if (canKongFromPong(ai, lastTile) || canKong(ai.hand, lastTile, false)) {
+    // 检查明杠（手牌有3张 + 别人打出1张）
+    // 注意：从碰加杠只能在自己摸牌时进行，不能杠别人打出的牌
+    if (canKong(ai.hand, lastTile, false)) {
       responses.push({ type: 'kong', priority: 3 });
     }
 
@@ -905,30 +906,9 @@ function handleAIPong(ai, tile, fromPlayerIndex) {
   }
 }
 
-// AI 执行杠
+// AI 执行明杠（别人打出的牌 + 手牌3张）
+// 注意：从碰加杠只能在摸牌时进行，不在这里处理
 function handleAIKong(ai, tile, fromPlayerIndex) {
-  // 检查是否是"从碰加杠"（已有碰，别人打出第4张）
-  const existingPongIndex = ai.melds ? ai.melds.findIndex(m => m.type === 'pong' && m.tiles[0].type === tile.type) : -1;
-
-  if (existingPongIndex !== -1) {
-    // 从碰加杠：将碰升级为杠
-    const oldPong = ai.melds[existingPongIndex];
-    ai.melds[existingPongIndex] = {
-      type: 'kong',
-      tiles: [...oldPong.tiles, tile]
-    };
-    // 从打出这张牌的玩家的牌池中移除
-    if (fromPlayerIndex !== undefined) {
-      const fromPlayer = game.players[fromPlayerIndex];
-      if (fromPlayer && fromPlayer.pool.length > 0) {
-        fromPlayer.pool.pop();
-      }
-    }
-    // 清除 lastDiscard
-    game.lastDiscard = null;
-    return;
-  }
-
   // 普通明杠：手牌有3张 + 打出的1张
   const indices = [];
   ai.hand.forEach((t, i) => {
@@ -1592,16 +1572,19 @@ function handlePlayerAction(action) {
       
     case 'kong':
       // 杠：两种情况
-      // 1. 从碰加杠（明杠）- 手牌1张+已有的碰3张
-      // 2. 直接明杠 - 手牌3张+打出的1张
+      // 1. 从碰加杠 - 只能在摸牌后进行（手牌1张+已有的碰3张）
+      // 2. 明杠 - 响应别人打出的牌（手牌3张+打出的1张）
       if (lastTile) {
         Sound.playKong();
         // 语音播报动作"杠"
         speakAction('杠', 0);
-        
-        // 先检查是否可以从碰加杠
-        if (canKongFromPong(player, lastTile)) {
-          // 从碰加杠
+
+        // 判断是否是摸牌后的从碰加杠
+        // 摸牌后 lastTile 在手牌中，响应别人时 lastTile 是别人打出的牌
+        const isAfterDraw = player.hand.some(t => t.id === lastTile.id);
+
+        if (isAfterDraw && canKongFromPong(player, lastTile)) {
+          // 从碰加杠（只能在自己摸牌后）
           const meldIndex = player.melds.findIndex(m => m.type === 'pong' && m.tiles[0].type === lastTile.type);
           if (meldIndex !== -1) {
             // 移除旧的碰，添加新的杠
@@ -1612,10 +1595,8 @@ function handlePlayerAction(action) {
               tiles: [...oldPong.tiles, lastTile]
             });
             // 从手牌移除1张
-            const handIdx = player.hand.findIndex(t => t.type === lastTile.type);
+            const handIdx = player.hand.findIndex(t => t.id === lastTile.id);
             if (handIdx !== -1) player.hand.splice(handIdx, 1);
-            // 移除打出的牌
-            if (player.pool.length > 0) player.pool.pop();
             game.lastDiscard = null;
             
             renderPlayerHand();
