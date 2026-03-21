@@ -1092,6 +1092,17 @@ function checkPlayerResponse() {
   const currentDrawer = game.lastDrawer !== undefined ? game.lastDrawer : game.currentPlayer;
   const discardPlayerName = PLAYER_VOICES[currentDrawer].name;
   console.log('[checkPlayerResponse] 当前打牌者:', currentDrawer, discardPlayerName, '打出的牌:', lastTileName);
+
+  // 不能响应自己打出的牌
+  if (currentDrawer === 0) {
+    console.log('[checkPlayerResponse] 玩家打出的牌，玩家不能响应');
+    endAnimation();
+    const nextPlayerIndex = (currentDrawer + 3) % 4;
+    game.currentPlayer = nextPlayerIndex;
+    game.lastDiscard = null;
+    safeDelay(() => startTurn(), 300);
+    return;
+  }
   console.log('[checkPlayerResponse] 玩家手牌数:', player.hand.length, '手牌:', player.hand.map(t => t.type));
   console.log('[checkPlayerResponse] 玩家副露:', player.melds ? player.melds.map(m => `${m.type}: ${m.tiles.map(t => t.type).join(',')}`) : '无');
 
