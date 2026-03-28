@@ -1584,7 +1584,7 @@ document.querySelectorAll('.action-btn').forEach(btn => {
 });
 
 // 处理玩家操作
-function handlePlayerAction(action) {
+async function handlePlayerAction(action) {
   const player = game.players[0];
   const lastTile = game.lastDiscard;
   const lastTileName = lastTile ? lastTile.name || lastTile.type : '';
@@ -1751,34 +1751,37 @@ function handlePlayerAction(action) {
     case 'chi':
       // 吃：找到能组成顺子的牌
       if (lastTile) {
-        Sound.playChow();
-        // 语音播报动作"吃"
-        speakAction('吃', 0);
-
         // 找到所有可能的顺子组合
-        const suit = lastTile.type.replace(/\d/g, '');
-        const num = parseInt(lastTile.type.replace(/\D/g, ''));
-        const possibleCombinations = [
-          [num - 2, num - 1],  // 打出的牌作为第三张
-          [num - 1, num + 1],  // 打出的牌作为中间
-          [num + 1, num + 2]   // 打出的牌作为第一张
-        ];
+        const combinations = getChiCombinations(player.hand, lastTile);
 
-        // 找到第一个可行的组合
-        let foundCombination = null;
-        for (const [n1, n2] of possibleCombinations) {
-          if (n1 < 1 || n2 > 9) continue;
-          const needed = [`${suit}${n1}`, `${suit}${n2}`];
-          const hasAll = needed.every(need => player.hand.some(t => t.type === need));
-          if (hasAll) {
-            foundCombination = needed;
-            break;
+        if (combinations.length > 0) {
+          // 如果有多个组合，弹出选择窗口
+          let selectedCombo = combinations[0];
+
+          if (combinations.length > 1) {
+            // 多个组合，需要用户选择
+            endAnimation(); // 先释放动画锁，让用户可以交互
+
+            const result = await showChiSelection(lastTile, combinations);
+            if (!result) {
+              // 用户点击了"过"
+              elements.actions.chi.disabled = true;
+              elements.actions.pong.disabled = true;
+              elements.actions.kong.disabled = true;
+              elements.actions.win.disabled = true;
+              elements.actions.pass.disabled = true;
+              clearAllTimeouts();
+              return;
+            }
+            selectedCombo = result.combination;
           }
-        }
 
-        if (foundCombination) {
+          Sound.playChow();
+          speakAction('吃', 0);
+
+          // 从手牌中移除选中的两张牌
           const indices = [];
-          foundCombination.forEach(need => {
+          selectedCombo.tiles.forEach(need => {
             const idx = player.hand.findIndex(t => t.type === need);
             if (idx !== -1) indices.push({ idx, type: need });
           });
@@ -1788,14 +1791,15 @@ function handlePlayerAction(action) {
           player.melds.push({
             type: 'chow',
             tiles: [
-              { type: foundCombination[0] },
+              { type: selectedCombo.tiles[0] },
               lastTile,
-              { type: foundCombination[1] }
+              { type: selectedCombo.tiles[1] }
             ].sort((a, b) => a.type.localeCompare(b.type))
           });
-          // 移除打出的牌
-          if (player.pool.length > 0) {
-            player.pool.pop();
+          // 移除打出的牌（从打出这张牌的玩家的牌池中移除）
+          const fromPlayer = game.players[game.lastDrawer];
+          if (fromPlayer && fromPlayer.pool.length > 0) {
+            fromPlayer.pool.pop();
           }
           // 清除 lastDiscard
           game.lastDiscard = null;
@@ -1803,7 +1807,7 @@ function handlePlayerAction(action) {
           renderPlayerHand();
           renderMelds('chow');
           renderPool();
-          logEvent(`<span class="log-player">你</span>吃了 <span class="log-tile">${lastTileName}</span>（要${lastTileName}）`, 'chow');
+          logEvent(`<span class="log-player">你</span>吃了 <span class="log-tile">${lastTileName}</span>`, 'chow');
           game.state = GameState.DISCARDING;
           elements.actions.chi.disabled = true;
           elements.actions.pong.disabled = true;

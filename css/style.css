@@ -986,7 +986,7 @@ header .config-area input {
     font-size: 0.75rem;
   }
 
-  /* Wall area adjustments */
+  /* Wall area adjustments - 缩小到与亮牌堆一样 */
   .wall-area {
     position: relative;
     left: auto;
@@ -995,12 +995,18 @@ header .config-area input {
   }
 
   .wall {
-    width: 120px;
-    height: 36px;
+    width: 80px;
+    height: 32px;
   }
 
   .wall-count {
     font-size: 0.85rem;
+  }
+
+  /* pool-small 平板尺寸 */
+  .pool-small img.tile-img {
+    width: 24px;
+    height: 32px;
   }
 
   /* Pool adjustments */
@@ -1036,29 +1042,42 @@ header .config-area input {
     padding: 5px;
   }
 
+  /* 标题行单行布局 */
   header {
-    padding: 8px;
+    padding: 6px 5px;
     margin-bottom: 5px;
-    flex-wrap: wrap;
-    gap: 10px;
+    flex-wrap: nowrap;
+    gap: 8px;
+    justify-content: space-between;
   }
 
   header h1 {
-    font-size: 1rem;
+    font-size: 0.9rem;
     letter-spacing: 2px;
-    width: 100%;
-    order: -1;
+    width: auto;
+    order: 0;
+    flex-shrink: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   header .restart-btn-small {
     position: static;
-    padding: 6px 12px;
-    font-size: 0.85rem;
+    padding: 5px 10px;
+    font-size: 0.8rem;
+    flex-shrink: 0;
   }
 
   header .config-area {
     position: static;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+  }
+
+  header .config-area label {
+    white-space: nowrap;
   }
 
   .mahjong-table {
@@ -1113,14 +1132,20 @@ header .config-area input {
     max-height: 50px;
   }
 
-  /* Wall small screen */
+  /* Wall small screen - 缩小到与亮牌堆一样 */
   .wall {
-    width: 90px;
-    height: 28px;
+    width: 60px;
+    height: 32px;
   }
 
   .wall-count {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
+  }
+
+  /* pool-small 小屏尺寸 */
+  .pool-small img.tile-img {
+    width: 24px;
+    height: 32px;
   }
 
   /* Log panel collapsed by default on mobile */
