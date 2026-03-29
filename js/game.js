@@ -1809,6 +1809,7 @@ async function handlePlayerAction(action) {
           if (combinations.length > 1) {
             // 多个组合，需要用户选择
             endAnimation(); // 先释放动画锁，让用户可以交互
+            clearAllTimeouts(); // 清除超时，等待用户选择
 
             const result = await showChiSelection(lastTile, combinations);
             if (!result) {
