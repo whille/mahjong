@@ -49,15 +49,21 @@ header {
 }
 
 header h1 {
-  font-size: 1.8rem;
+  font-size: 1.3rem;
   color: var(--accent-gold);
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-  letter-spacing: 8px;
+  text-shadow: 2px 2px 4px rgba(, 0, 0, 0.5);
+  letter-spacing: 4px;
 }
 
-header .restart-btn-small {
+header .header-left {
   position: absolute;
   left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+header .restart-btn-small
   padding: 8px 16px;
   background: var(--accent-gold);
   color: var(--bg-color);
@@ -65,6 +71,11 @@ header .restart-btn-small {
   border-radius: 4px;
   font-weight: bold;
   cursor: pointer;
+}
+
+header .wall-count {
+  color: var(--text-color);
+  font-size: 0.9rem;
 }
 
 header .config-area {
@@ -221,9 +232,13 @@ header .config-area input {
 /* 牌池 - 中央 */
 .pool-center {
   display: flex;
-  align-items: flex-end;  /* 底部对齐 */
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  gap: 5px;
   z-index: 5;
+  min-width: 200px;
+  min-height: 150px;
 }
 
 .pool {
@@ -296,32 +311,6 @@ header .config-area input {
   background: #fff;  /* 白色背景 */
   border: 1px solid #d4af37;
   border-radius: 2px;
-}
-
-/* 牌山 - 居中显示 */
-.wall-area {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 100;  /* 在弃牌堆之上 */
-}
-
-.wall {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 180px;
-  height: 45px;
-  background: linear-gradient(145deg, #8b0000, #5c0000);
-  border: 2px solid var(--accent-gold);
-  border-radius: 5px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.5);
-}
-
-.wall-count {
-  color: var(--accent-gold);
-  font-size: 1rem;
 }
 
 /* 玩家 - 底部 */

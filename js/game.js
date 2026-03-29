@@ -494,13 +494,13 @@ const elements = {
   playerMelds: document.getElementById('player-melds'),
   playerStatus: document.getElementById('player-status'),
   poolSelf: document.getElementById('pool-self'),
-  wall: document.getElementById('wall'),
+  wallCount: document.getElementById('wall-count-header'),
   messageArea: document.getElementById('message-area'),
   restartArea: document.getElementById('restart-area'),
   // 4个玩家的元素
   players: {
     0: { hand: document.getElementById('player-hand'), melds: document.getElementById('player-melds'), pool: document.getElementById('pool-self'), tileCount: null },
-    1: { hand: document.getElementById('ai1-hand'), melds: document.getElementById('ai1-melds'), pool: document.getElementById('pool-1'), tileCount: document.getElementById('ai1-tile-count') },
+    1: { hand: document.getElementById('ai1-hand'), melds: document.getElementByIdai1-melds'), pool: document.getElementById('pool-1'), tileCount: document.getElementById('ai1-tile-count') },
     2: { hand: document.getElementById('ai2-hand'), melds: document.getElementById('ai2-melds'), pool: document.getElementById('pool-2'), tileCount: document.getElementById('ai2-tile-count') },
     3: { hand: document.getElementById('ai3-hand'), melds: document.getElementById('ai3-melds'), pool: document.getElementById('pool-3'), tileCount: document.getElementById('ai3-tile-count') }
   },
@@ -509,7 +509,7 @@ const elements = {
     pong: document.querySelector('[data-action="pong"]'),
     kong: document.querySelector('[data-action="kong"]'),
     win: document.querySelector('[data-action="win"]'),
-    pass: document.querySelector('[data-action="pass"]')
+    pass: document.querySelector('[data-action="pass"]
   }
 };
 
@@ -1480,7 +1480,9 @@ function highlightCurrentPlayer(highlightPlayer) {
 
 // 更新牌山显示
 function updateWall() {
-  elements.wall.querySelector('.wall-count').textContent = `${game.wall.length} 张`;
+  if (elements.wallCount) {
+    elements.wallCount.textContent = `${game.wall.length} 张`;
+  }
   updateAllPlayerStatus();
 }
 

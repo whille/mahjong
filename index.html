@@ -13,9 +13,12 @@
 
   <div class="game-container">
     <header>
-      <button class="restart-btn-small" onclick="initGame()">新局</button>
-      <h1>🀄 网页麻将</h1>
-      <div class="config-area">
+      <div class="header-left">
+        <button class="restart-btn-small" onclick="initGame()">新局</button>
+        <span class="wall-count" id="wall-count-header">136 张</span>
+      </div>
+      <h1>🀄 网页麻将</h1
+      <div classconfig-area">
         <label>超时: <input type="number" id="timeout-setting" value="10" min="5" max="120" step="5">秒</label>
       </div>
     </header>
@@ -45,8 +48,8 @@
           <div class="pool-small" id="pool-3"></div>
         </div>
         
-        <!-- 中央牌池 -->
-        <div class="pool-center">
+        <!-- 中央弃牌池 -->
+        <div class="-center" id="pool-center">
           <div class="pool-small" id="pool-self"></div>
         </div>
         
@@ -61,14 +64,7 @@
           <div class="pool-small" id="pool-1"></div>
         </div>
       </div>
-      
-      <!-- 牌山 -->
-      <div class="wall-area">
-        <div class="wall" id="wall">
-          <span class="wall-count">136 张</span>
-        </div>
-      </div>
-      
+
       <!-- 玩家 (你) - 底部 -->
       <div class="player-area player-self" id="player-0">
         <div class="player-info">
