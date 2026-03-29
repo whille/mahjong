@@ -264,6 +264,110 @@ claude --teleport
 
 ---
 
+## 十一、省钱指南（Token 优化）
+
+### 11.1 核心认知
+> **input token 占总消耗的 70-85%**，大头是上下文读取（项目文件），不是你写的 prompt。
+
+### 11.2 .claudeignore 文件（省 40-60%）
+在项目根目录创建，排除不需要读取的文件：
+```
+# 依赖和构建产物
+node_modules/
+dist/
+build/
+.next/
+__pycache__/
+
+# 锁文件和日志
+*.lock
+*.log
+
+# 版本控制和 IDE
+.git/
+.idea/
+.vscode/
+
+# 测试覆盖率
+coverage/
+.cache/
+```
+
+### 11.3 对话习惯优化
+- **任务拆小**：具体化指令，避免"重构整个模块"
+- **定期 `/compact`**：每 5-6 轮压缩对话历史
+- **用 `/clear` 开启新任务**：避免无关历史
+
+### 11.4 计费方案选择
+使用 API 中转可省 30-50%，国内直连更稳定。
+
+### 11.5 优化优先级
+| 优先级 | 措施 | 效果 |
+|--------|------|------|
+| P0 | .claudeignore + CLAUDE.md | 5分钟搞定，省60% |
+| P1 | 任务拆小、/compact、中转方案 | 再省30% |
+
+---
+
+## 十二、50条实战心法
+
+### 基础心法
+1. 任务描述永远放在最前面，重要指令置顶
+2. 给Claude一个自我验证的方式（测试用例、截图、预期输出）
+3. 提示词结构：**角色 + 任务 + 上下文**
+4. 工作流程：**先探索 → 再规划 → 后执行**
+5. 假设Claude对项目一无所知，提供完整信息
+6. 用 `@` 符号链接文件、数据和图片
+7. 运行 `/init` 生成CLAUDE.md模板文件
+
+### 项目与技能管理
+8. 用项目级指令定义长期行为
+9. 编辑Memory标签控制Claude应记住或忽略的内容
+10. 把重复性工作流转化为Skills
+11. 贴优秀输出让Claude变成可复用Skill
+12. 上传截图让Claude复刻创建Skill
+13. 定期清理memory、文件和指令防止项目漂移
+14. 不相关工作流分开项目避免上下文污染
+
+### 冷门实用技巧
+15. 用其他大模型规划项目再交给Claude执行
+16. 在 `.claude/agents/` 目录定义子代理
+17. 让Claude根据预设标准给自己打分
+18. 运行 `/plugin` 浏览插件市场
+19. 大型项目让Claude先采访你
+20. 跑偏按 ESC 中断，`/clear` 开启干净会话
+21. 双击ESC或 `/rewind` 打开检查点菜单
+22. 运行多个并行会话提效
+
+### 调试与错误处理
+23. 只重跑出错步骤
+24. 让Claude故意复现错误
+25. 回滚到正常提示词逐步重新应用
+26. CLAUDE.md太长会适得其反，需精简
+27. 不相关任务间用 `/clear`
+28. 连续纠正两次仍错，`/clear` 后重写初始提示词
+29. 参考官方文档减少token消耗
+
+### 进阶技巧
+30. 把Notion数据库连接到Claude
+31. 使用 `--dangerously-skip-permissions` 跳过权限检查
+32. Hooks适合每次必执行的操作
+33. **慢即是快**：规划、规划、再规划，然后执行
+
+---
+
+## 十三、键盘快捷键
+
+| 快捷键 | 功能 |
+|--------|------|
+| `Ctrl + R` | 搜索历史命令 |
+| `Ctrl + S` | 暂停/恢复输出 |
+| `ESC` | 中断当前操作 |
+| `ESC ESC` | 打开检查点菜单 |
+| `Tab` | 自动补全 |
+
+---
+
 ## 参考资源
 
 1. [Builder.io - How I use Claude Code](https://www.builder.io/blog/claude-code)
@@ -271,3 +375,5 @@ claude --teleport
 3. [DEV - The Ultimate Claude Code Guide](https://dev.to/holasoymalva/the-ultimate-claude-code-guide)
 4. [Introl - Claude Code CLI Comprehensive Guide](https://introl.com/blog/claude-code-cli-comprehensive-guide-2025)
 5. [Claude Code 官方文档](https://code.claude.com/docs/en/overview)
+6. [Claude Code 省钱指南 - 博客园](https://www.cnblogs.com/smile-fanyin/p/19678850)
+7. [Claude Code 最全面使用指南 - CSDN](https://blog.csdn.net/weixin_44292782/article/details/159287074)
