@@ -1009,12 +1009,15 @@ function checkPlayerActions() {
   }
 
   // 检查暗杠
-  if (player.hand.some(t => {
+  const concealedKongTile = player.hand.find(t => {
     const count = player.hand.filter(x => x.type === t.type).length;
     return count === 4;
-  })) {
+  });
+  if (concealedKongTile) {
     elements.actions.kong.disabled = false;
     logEvent('🔔 <span class="log-player">你</span>可以暗杠！', 'kong');
+    // 记录可以暗杠的牌，供 handlePlayerAction 使用
+    game.concealedKongTile = concealedKongTile;
   }
 
   // 检查加杠（从碰加杠）- 手牌中某张牌和已有的碰组成杠
@@ -1668,9 +1671,10 @@ async function handlePlayerAction(action) {
       break;
       
     case 'kong':
-      // 杠：两种情况
+      // 杠：三种情况
       // 1. 从碰加杠（摸牌后）- 使用 game.kongTile
-      // 2. 明杠 - 响应别人打出的牌（手牌3张+打出的1张）
+      // 2. 暗杠（摸牌后）- 使用 game.concealedKongTile
+      // 3. 明杠 - 响应别人打出的牌（手牌3张+打出的1张）
       Sound.playKong();
       speakAction('杠', 0);
 
@@ -1686,6 +1690,7 @@ async function handlePlayerAction(action) {
           const handIdx = player.hand.findIndex(t => t.id === kongTile.id);
           if (handIdx !== -1) player.hand.splice(handIdx, 1);
           game.kongTile = null;
+          game.concealedKongTile = null;
 
           renderPlayerHand();
           renderMelds('kong');
@@ -1709,6 +1714,45 @@ async function handlePlayerAction(action) {
             checkPlayerActions();
           }
         }
+      } else if (game.concealedKongTile) {
+        // 暗杠 - 摸牌后手牌有4张相同的牌
+        const kongType = game.concealedKongTile.type;
+        const indices = [];
+        player.hand.forEach((t, i) => {
+          if (t.type === kongType && indices.length < 4) indices.push(i);
+        });
+        if (indices.length === 4) {
+          indices.sort((a, b) => b - a).forEach(i => player.hand.splice(i, 1));
+          player.melds = player.melds || [];
+          player.melds.push({ type: 'kong', tiles: [{ type: kongType }, { type: kongType }, { type: kongType }, { type: kongType }], concealed: true });
+          game.kongTile = null;
+          game.concealedKongTile = null;
+
+          renderPlayerHand();
+          renderMelds('kong');
+          renderPool();
+
+          const drawnTile = drawTile(player, game.wall);
+          if (drawnTile) {
+            Sound.playDraw();
+            logEvent(`<span class="log-player">你</span>暗杠 <span class="log-tile">${kongType}</span>，摸到了 <span class="log-tile">${drawnTile.name || drawnTile.type}</span>，打一张牌`, 'kong');
+            game.lastAction = 'kong';
+            player.hand.sort((a, b) => a.type.localeCompare(b.type));
+            renderPlayerHand();
+            updateWall();
+            game.state = GameState.DRAWING;
+            elements.actions.chi.disabled = true;
+            elements.actions.pong.disabled = true;
+            elements.actions.kong.disabled = true;
+            elements.actions.win.disabled = true;
+            elements.actions.pass.disabled = true;
+            clearAllTimeouts();
+            checkPlayerActions();
+          } else {
+            logEvent('❌ 牌山已空，流局', 'win');
+            game.state = GameState.GAMEOVER;
+          }
+        }
       } else if (lastTile) {
         // 明杠 - 响应别人打出的牌
         const indices = [];
@@ -1719,8 +1763,12 @@ async function handlePlayerAction(action) {
           indices.sort((a, b) => b - a).forEach(i => player.hand.splice(i, 1));
           player.melds = player.melds || [];
           player.melds.push({ type: 'kong', tiles: [{ type: lastTile.type }, { type: lastTile.type }, { type: lastTile.type }, lastTile], concealed: false });
-          if (player.pool.length > 0) player.pool.pop();
+          // 从打出这张牌的玩家的牌池中移除
+          const fromPlayer = game.players[game.lastDrawer !== undefined ? game.lastDrawer : game.currentPlayer];
+          if (fromPlayer && fromPlayer.pool.length > 0) fromPlayer.pool.pop();
           game.lastDiscard = null;
+          game.kongTile = null;
+          game.concealedKongTile = null;
 
           renderPlayerHand();
           renderMelds('kong');

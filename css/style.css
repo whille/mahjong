@@ -1570,5 +1570,21 @@ header .config-area input {
 }
 
 .log-entry.win {
-  animation: messageFlash 1s ease-in-out 3;
+  animation: messageFlash 1s ease-in 3;
+} 玩家副露区 - 缩小尺寸展示 */
+#player-melds .tile-img {
+  width: 36px;
+  height: 48px;
+}
+
+#player-melds .meld {
+  gap: 0;
+}
+
+#player-melds .meld.horizontal .tile-img {
+  margin-right: -8px;
+}
+
+#player-melds .meld.horizontal .tile-img:last-child {
+  margin-right: 0;
 }
