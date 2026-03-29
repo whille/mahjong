@@ -35,8 +35,118 @@ let game = {
   // [新增] 存储所有timeout，用于清理
   timeouts: [],
   // [新增] AI难度设置
-  aiDifficulty: AI_DIFFICULTY.MEDIUM
+  aiDifficulty: AI_DIFFICULTY.MEDIUM,
+  // [新增] 记录打牌者
+  lastDrawer: undefined,
+  // [新增] 记录日志内容（用于恢复）
+  logEntries: []
 };
+
+// ============================================
+// 游戏状态持久化
+// ============================================
+
+/**
+ * 保存游戏状态到 localStorage
+ */
+function saveGameState() {
+  const state = {
+    state: game.state,
+    players: game.players.map(p => ({
+      id: p.id,
+      hand: p.hand,
+      pool: p.pool,
+      melds: p.melds,
+      isTenpai: p.isTenpai,
+      isHu: p.isHu
+    })),
+    wall: game.wall,
+    currentPlayer: game.currentPlayer,
+    lastDiscard: game.lastDiscard,
+    dealer: game.dealer,
+    lastAction: game.lastAction,
+    lastDrawer: game.lastDrawer,
+    // 保存日志条目
+    logEntries: game.logEntries || []
+  };
+  localStorage.setItem('mahjong_game_state', JSON.stringify(state));
+}
+
+/**
+ * 从 localStorage 恢复游戏状态
+ */
+function loadGameState() {
+  const saved = localStorage.getItem('mahjong_game_state');
+  if (!saved) return false;
+
+  try {
+    const state = JSON.parse(saved);
+    game.state = state.state;
+    game.players = state.players;
+    game.wall = state.wall;
+    game.currentPlayer = state.currentPlayer;
+    game.lastDiscard = state.lastDiscard;
+    game.dealer = state.dealer;
+    game.lastAction = state.lastAction;
+    game.lastDrawer = state.lastDrawer;
+    game.logEntries = state.logEntries || [];
+    // 恢复后重置动画状态
+    game.isAnimating = false;
+    game.timeouts = [];
+
+    // 重新绑定 AI 方法
+    game.players.forEach((p, i) => {
+      if (i > 0) {
+        p.decide = function(tile) {
+          const ai = new AIPlayer(this, game.aiDifficulty, game);
+          return ai.decide(tile);
+        };
+        p.decideResponse = function(discardedTile) {
+          const ai = new AIPlayer(this, game.aiDifficulty, game);
+          return ai.decideResponse(discardedTile);
+        };
+        p.decideDiscardAfterAction = function() {
+          const ai = new AIPlayer(this, game.aiDifficulty, game);
+          return ai.decideDiscardAfterAction();
+        };
+      }
+    });
+
+    // 恢复日志内容
+    restoreLogContent();
+
+    return true;
+  } catch (e) {
+    console.error('恢复游戏状态失败:', e);
+    return false;
+  }
+}
+
+/**
+ * 恢复日志内容
+ */
+function restoreLogContent() {
+  const logContent = document.getElementById('log-content');
+  if (!logContent || !game.logEntries) return;
+
+  logContent.innerHTML = '';
+  game.logEntries.forEach(entry => {
+    const div = document.createElement('div');
+    div.className = `log-entry ${entry.type || 'normal'}`;
+    div.innerHTML = entry.message;
+    logContent.appendChild(div);
+  });
+
+  // 滚动到底部
+  logContent.scrollTop = logContent.scrollHeight;
+}
+
+/**
+ * 清除保存的游戏状态
+ */
+function clearGameState() {
+  localStorage.removeItem('mahjong_game_state');
+}
 
 // ============================================
 // 动画锁工具函数
@@ -198,19 +308,27 @@ function speakAction(actionName, playerIndex) {
 function logEvent(message, type = 'normal') {
   const logContent = document.getElementById('log-content');
   if (!logContent) return;
-  
+
   const entry = document.createElement('div');
   entry.className = `log-entry ${type}`;
   entry.innerHTML = message;
-  
+
   logContent.appendChild(entry);
-  
+
   // 自动滚动到底部
   logContent.scrollTop = logContent.scrollHeight;
-  
+
   // 限制显示条数
   while (logContent.children.length > 100) {
     logContent.removeChild(logContent.firstChild);
+  }
+
+  // 保存日志条目到游戏状态（用于刷新后恢复）
+  if (!game.logEntries) game.logEntries = [];
+  game.logEntries.push({ message, type });
+  // 限制保存条数
+  if (game.logEntries.length > 100) {
+    game.logEntries.shift();
   }
 }
 
@@ -514,6 +632,12 @@ const elements = {
 
 // 初始化游戏
 function initGame() {
+  // 清除保存的游戏状态
+  clearGameState();
+
+  // 清空日志条目
+  game.logEntries = [];
+
   // 隐藏重新开始按钮和亮牌区域
   elements.restartArea.style.display = 'none';
   const revealArea = document.getElementById('reveal-area');
@@ -672,6 +796,9 @@ function playerDiscard(tileId) {
     renderPlayerHand();
     renderPool();
     updateWall();
+
+    // 保存游戏状态
+    saveGameState();
 
     // 高亮当前响应玩家（打出牌后等待响应时不高亮任何人的回合）
     // 牌打出后，检查其他玩家是否要响应
@@ -1188,6 +1315,9 @@ function aiTurn() {
   renderAIBacks();
   updateWall();
 
+  // 保存游戏状态
+  saveGameState();
+
   // AI 打牌后，检查其他玩家是否要响应（包括其他 AI 和玩家）
   game.state = GameState.RESPONDING;
   checkAIResponse();
@@ -1215,6 +1345,9 @@ function aiDiscardAfterAction() {
   renderPool();
   renderAIBacks();
   updateWall();
+
+  // 保存游戏状态
+  saveGameState();
 
   // AI 打牌后，检查其他玩家是否要响应（包括其他 AI 和玩家）
   game.state = GameState.RESPONDING;
@@ -1552,6 +1685,8 @@ function renderGame() {
   renderMelds();
   renderAIMelds();
   updateWall();
+  // 保存游戏状态
+  saveGameState();
 }
 
 // 渲染 AI 手牌背面
@@ -1916,7 +2051,33 @@ document.addEventListener('DOMContentLoaded', () => {
   // // console.log(Testing tile system...');
   const testTiles = initTileSet();
   // // console.log(Total tiles: ${testTiles.length}`);
-  
-  // 初始化并开始游戏
-  initGame();
+
+  // 尝试恢复之前的游戏状态
+  if (loadGameState()) {
+    console.log('恢复之前的游戏状态');
+    renderGame();
+    highlightCurrentPlayer();
+
+    // 根据当前状态决定下一步操作
+    if (game.state === GameState.GAMEOVER) {
+      // 游戏已结束，显示亮牌区域（如果需要）
+      console.log('游戏已结束');
+    } else if (game.currentPlayer === 0) {
+      // 玩家回合
+      if (game.state === GameState.DRAWING) {
+        // 玩家已摸牌，等待打牌
+        console.log('等待玩家打牌');
+      } else if (game.state === GameState.RESPONDING) {
+        // 检查玩家是否可以响应
+        checkPlayerResponse();
+      }
+    } else {
+      // AI 回合，延迟后继续
+      console.log('AI 回合继续');
+      safeDelay(() => startTurn(), 500);
+    }
+  } else {
+    // 初始化并开始新游戏
+    initGame();
+  }
 });
