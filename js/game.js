@@ -755,14 +755,29 @@ function playerDiscard(tileId) {
     return;
   }
 
+  const player = game.players[0];
+  const handCount = player.hand.length;
+
+  // 检查手牌数量：玩家必须有14张牌（摸牌后）才能打牌
+  // 特殊情况：碰/吃/杠后打牌时手牌可能是13张
+  if (handCount < 13) {
+    console.log('手牌数量异常:', handCount, '，无法打牌');
+    return;
+  }
+
+  // 如果手牌只有13张且是在 DRAWING 状态，说明已经打过牌了（刷新后的异常情况）
+  if (handCount === 13 && game.state === GameState.DRAWING) {
+    console.log('手牌只有13张但状态为DRAWING，可能已经打过牌了，自动跳到下一家');
+    game.state = GameState.RESPONDING;
+    checkAIResponse();
+    return;
+  }
+
   // 玩家回合中才能打牌 (允许 DRAWING, DISCARDING, RESPONDING 状态)
   const allowedStates = [GameState.DRAWING, GameState.DISCARDING, GameState.RESPONDING];
   if (!allowedStates.includes(game.state)) {
     // // // console.log(警告: 状态不理想但仍允许打牌', game.state);
   }
-
-  const player = game.players[0];
-  // // // console.log(手牌数:', player.hand.length, '尝试打:', tileId);
 
   // 找到要打的牌
   const tileIndex = player.hand.findIndex(t => t.id === tileId);
@@ -1207,6 +1222,7 @@ function aiTurn() {
       clearAllTimeouts();
       logEvent(`🎉 <span class="log-player">${playerName}</span>自摸胡牌！`, 'win');
       game.state = GameState.GAMEOVER;
+      saveGameState(); // 保存游戏结束状态
       revealAllHands(game.currentPlayer, true, false);
       return;
 
@@ -1253,6 +1269,7 @@ function aiTurn() {
       renderAIBacks();
       updateWall();
       game.lastAction = 'kong';
+      saveGameState(); // 保存杠操作
 
       // 杠后摸一张牌，继续该玩家的回合
       safeDelay(() => {
@@ -1269,6 +1286,7 @@ function aiTurn() {
                 clearAllTimeouts();
                 logEvent(`🎉 <span class="log-player">${playerName}</span>自摸胡牌！`, 'win');
                 game.state = GameState.GAMEOVER;
+                saveGameState(); // 保存游戏结束状态
                 revealAllHands(game.currentPlayer, true, false);
               } else if (nextAction.type === 'discard') {
                 discardTile(ai, nextAction.tileId);
@@ -1282,6 +1300,7 @@ function aiTurn() {
                 renderAIBacks();
                 updateWall();
                 game.state = GameState.RESPONDING;
+                saveGameState(); // 保存打牌后状态
                 checkAIResponse();
               }
             }
@@ -1289,6 +1308,7 @@ function aiTurn() {
         } else {
           logEvent('❌ 牌山已空，流局', 'win');
           game.state = GameState.GAMEOVER;
+          saveGameState(); // 保存流局状态
         }
       }, 300);
       return;
@@ -1457,8 +1477,8 @@ function checkPlayerResponse() {
   // 逆时针顺序：南家(0) → 西家(3) → 北家(2) → 东家(1) → 南家(0)
   // 打牌者的下家 = (currentDrawer + 3) % 4
   // 玩家(0)能吃，当且仅当玩家是打牌者的下家
-  const nextPlayer = (currentDrawer + 3) % 4;
-  if (nextPlayer === 0 && canChow(player.hand, lastTile)) {
+  const nextPlayerIndex = (currentDrawer + 3) % 4;
+  if (nextPlayerIndex === 0 && canChow(player.hand, lastTile)) {
     elements.actions.chi.disabled = false;
     logEvent(`🔔 <span class="log-player">你</span>可以吃 <span class="log-tile">${lastTileName}</span>！`, 'chow');
   }
@@ -1747,6 +1767,7 @@ async function handlePlayerAction(action) {
         logEvent('🎉 <span class="log-player">你</span>胡牌！', 'win');
       }
       game.state = GameState.GAMEOVER;
+      saveGameState(); // 保存游戏结束状态
       revealAllHands(0, isPlayerZimo, false);  // 亮出所有人的牌
       break;
       
@@ -1787,6 +1808,7 @@ async function handlePlayerAction(action) {
           renderPlayerHand();
           renderMelds('pong');
           renderPool();
+          saveGameState(); // 保存碰操作
           logEvent(`<span class="log-player">你</span>碰了 <span class="log-tile">${lastTileName}</span>（要${lastTileName}）`, 'pong');
           
           // 碰后需要再打一张（不摸牌）
@@ -1840,6 +1862,7 @@ async function handlePlayerAction(action) {
             renderPlayerHand();
             updateWall();
             game.state = GameState.DRAWING;
+            saveGameState(); // 保存杠后状态
             elements.actions.chi.disabled = true;
             elements.actions.pong.disabled = true;
             elements.actions.kong.disabled = true;
@@ -1876,16 +1899,18 @@ async function handlePlayerAction(action) {
             renderPlayerHand();
             updateWall();
             game.state = GameState.DRAWING;
+            saveGameState(); // 保存暗杠后状态
             elements.actions.chi.disabled = true;
             elements.actions.pong.disabled = true;
             elements.actions.kong.disabled = true;
             elements.actions.win.disabled = true;
-            elements.actions.pass.disabled = true;
-            clearAllTimeouts();
+            elements.actions.pass.disabled = true
+            clearAllTimeout();
             checkPlayerActions();
           } else {
             logEvent('❌ 牌山已空，流局', 'win');
             game.state = GameState.GAMEOVER;
+            saveGameState(); // 保存流局状态
           }
         }
       } else if (lastTile) {
@@ -1918,6 +1943,7 @@ async function handlePlayerAction(action) {
             renderPlayerHand();
             updateWall();
             game.state = GameState.DRAWING;
+            saveGameState(); // 保存明杠状态
             elements.actions.chi.disabled = true;
             elements.actions.pong.disabled = true;
             elements.actions.kong.disabled = true;
@@ -1926,6 +1952,7 @@ async function handlePlayerAction(action) {
           } else {
             logEvent('❌ 牌山已空，流局', 'win');
             game.state = GameState.GAMEOVER;
+            saveGameState(); // 保存流局状态
           }
         }
       }
@@ -1993,6 +2020,7 @@ async function handlePlayerAction(action) {
           renderPool();
           logEvent(`<span class="log-player">你</span>吃了 <span class="log-tile">${lastTileName}</span>`, 'chow');
           game.state = GameState.DISCARDING;
+          saveGameState(); // 保存吃操作
           elements.actions.chi.disabled = true;
           elements.actions.pong.disabled = true;
           elements.actions.kong.disabled = true;
@@ -2025,6 +2053,7 @@ async function handlePlayerAction(action) {
     // 跳过后回到打牌者的下家（让玩家摸牌）
     const lastDrawer = game.lastDrawer || game.currentPlayer;
     game.currentPlayer = (lastDrawer + 3) % 4;  // 跳到下家
+    saveGameState(); // 保存跳过状态
     // console.log([pass] 跳过，玩家摸牌:', game.currentPlayer);
     safeDelay(() => startTurn(), 300);
     return;
@@ -2064,15 +2093,30 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('游戏已结束');
     } else if (game.currentPlayer === 0) {
       // 玩家回合
+      const playerHandCount = game.players[0].hand.length;
+
       if (game.state === GameState.DRAWING) {
         // 玩家已摸牌，等待打牌
-        console.log('等待玩家打牌');
+        // 检查手牌数量是否正确（应该是14张）
+        if (playerHandCount === 14) {
+          console.log('等待玩家打牌（手牌14张）');
+        } else if (playerHandCount === 13) {
+          // 手牌只有13张但状态是DRAWING，说明已经打过牌了
+          console.log('手13张但状态为DRAWING，自动跳到下一家');
+          game.state = GameState.RESPONDING;
+          checkAIResponse();
+        } else {
+          console.log('手牌数量异常:', playerHandCount);
+        }
       } else if (game.state === GameState.RESPONDING) {
         // 检查玩家是否可以响应
         checkPlayerResponse();
+      } else if (game.state === GameState.DISCARDING) {
+        // 碰/吃/杠后需要打牌
+        console.log('等待玩家打牌（碰/吃/杠后）');
       }
     } else {
-      // AI 回合，延迟后继续
+      // 回合，延迟后继续
       console.log('AI 回合继续');
       safeDelay(() => startTurn(), 500);
     }
