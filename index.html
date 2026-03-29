@@ -1,11 +1,11 @@
-<! html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>网页麻将</title>
   <link rel="stylesheet" href="css/style.css">
-  <link rel="" href="css/tiles.css">
+  <link rel="stylesheet" href="css/tiles.css">
 </head>
 <body>
   <!-- 竖屏手机战况切换按钮 -->
@@ -19,7 +19,7 @@
       </div>
       <h1>🀄 网页麻将</h1>
       <div class="config-area">
-        <label>超时:  type="number id="timeout-setting" value="10" min="5" max="120" step="5">秒</label>
+        <label>超时: <input type="number" id="timeout-setting" value="10" min="5" max="120" step="5">秒</label>
       </div>
     </header>
 
@@ -27,7 +27,7 @@
       <!-- 对家 (北家) - 上方 -->
       <div class="player-area player-top" id="player-2">
         <div class="hand-back" id="ai2-hand"></div>
-         class="melds" id="ai2-melds"></div>
+        <div class="melds" id="ai2-melds"></div>
       </div>
 
       <!-- 中间区域: 左家/右家 + 牌池 -->
@@ -43,7 +43,7 @@
 
         <!-- 右家 (东家) -->
         <div class="player-area player-right" id="player-1">
-          <div class="melds id="ai1-melds"></div>
+          <div class="melds" id="ai1-melds"></div>
           <div class="hand-back vertical" id="ai1-hand"></div>
         </div>
       </div>
@@ -55,14 +55,14 @@
           <span class="player-status" id="player-status"></span>
         </div>
         <!-- 副露区 -->
-         class="melds" id="player-melds"></div>
+        <div class="melds" id="player-melds"></div>
         <!-- 手牌 -->
         <div class="hand" id="player-hand"></div>
         <div class="actions" id="player-actions">
           <button class="action-btn" data-action="chi" disabled>吃</button>
           <button class="action-btn" data-action="pong" disabled>碰</button>
           <button class="action-btn" data-action="kong" disabled>杠</button>
-          <button class="action-btn data-action="win" disabled>胡</button>
+          <button class="action-btn" data-action="win" disabled>胡</button>
           <button class="action-btn pass-btn" data-action="pass" disabled>跳过</button>
         </div>
       </div>
@@ -71,7 +71,7 @@
     <!-- 战况日志 -->
     <div class="log-panel" id="log-panel">
       <h3>战况</h3>
-      <div class="log-content" id="message-area</div>
+      <div class="log-content" id="message-area"></div>
     </div>
 
     <!-- 重新开始按钮 -->
@@ -80,7 +80,7 @@
     </div>
 
     <!-- 亮牌区域 -->
-    <div id="reveal-area" class="reveal-area" style="display: none;"></div>
+     id="reveal" class="-area" style="display: none;"></div>
 
     <!-- 帮助面板 -->
     <div id="help-panel" class="help-panel" style="display: none;">
@@ -88,7 +88,7 @@
       <ul>
         <li><strong>胡牌条件</strong>：4组面子 + 1对将牌</li>
         <li><strong>面子</strong>：顺子(123)或刻子(111)</li>
-        <li><strong>操作优先级</strong>：胡 > 杠 > 碰 > 吃</li>
+        <li><strong>操作优先级</strong>：胡 杠 > 碰 吃</li>
         <li><strong>番型</strong>：平胡1番、对对胡2番、清一色4番等</li>
       </ul>
       <button onclick="toggleHelp()">关闭</button>
