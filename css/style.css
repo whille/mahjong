@@ -225,8 +225,8 @@ header .config-area input {
 }
 
 .player-top .melds {
-  order: -1; /* 顶家，副露在下侧（靠近中心）*/
-  margin-bottom: 10px;
+  order: 1; /* 顶家，副露在下侧（暗牌下方）*/
+  margin-top: 10px;
 }
 
 /* 牌池 - 中央 */
@@ -1574,14 +1574,21 @@ header .config-area input {
 
 .log-entry.win {
   animation: messageFlash 1s ease-in 3;
-} 玩家副露区 - 缩小尺寸展示 */
+}
+
+#player-melds {
+  line-height: 0;
+  min-height: auto;
+}
+
 #player-melds .tile-img {
-  width: 36px;
-  height: 48px;
+  width: 32px !important;
+  height: 42px !important;
 }
 
 #player-melds .meld {
   gap: 0;
+  margin-bottom: 4px;
 }
 
 #player-melds .meld.horizontal .tile-img {

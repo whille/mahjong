@@ -1424,7 +1424,8 @@ function handleTileClick(tileId) {
 // 创建牌的 HTML (使用 PNG 图片)
 function createTileHTML(tile, isBack = false) {
   const type = isBack ? 'back' : tile.type;
-  return `<img class="tile-img" data-id="${tile.id}" src="assets/tiles/${type}.png" alt="${tile.type}">`;
+  const id = tile.id || `${tile.type}_${Math.random().toString(36).substr(2, 5)}`;
+  return `<img class="tile-img" data-id="${id}" src="assets/tiles/${type}.png" alt="${tile.type}">`;
 }
 
 // 创建 AI 牌背 HTML
