@@ -493,16 +493,15 @@ const elements = {
   playerHand: document.getElementById('player-hand'),
   playerMelds: document.getElementById('player-melds'),
   playerStatus: document.getElementById('player-status'),
-  poolSelf: document.getElementById('pool-self'),
   wallCount: document.getElementById('wall-count-header'),
   messageArea: document.getElementById('message-area'),
   restartArea: document.getElementById('restart-area'),
   // 4个玩家的元素
   players: {
-    0: { hand: document.getElementById('player-hand'), melds: document.getElementById('player-melds'), pool: document.getElementById('pool-self'), tileCount: null },
-    1: { hand: document.getElementById('ai1-hand'), melds: document.getElementById('ai1-melds'), pool: document.getElementById('pool-1'), tileCount: document.getElementById('ai1-tile-count') },
-    2: { hand: document.getElementById('ai2-hand'), melds: document.getElementById('ai2-melds'), pool: document.getElementById('pool-2'), tileCount: document.getElementById('ai2-tile-count') },
-    3: { hand: document.getElementById('ai3-hand'), melds: document.getElementById('ai3-melds'), pool: document.getElementById('pool-3'), tileCount: document.getElementById('ai3-tile-count') }
+    0: { hand: document.getElementById('player-hand'), melds: document.getElementById('player-melds'), tileCount: null },
+    1: { hand: document.getElementById('ai1-hand'), melds: document.getElementById('ai1-melds'), tileCount: null },
+    2: { hand: document.getElementById('ai2-hand'), melds: document.getElementById('ai2-melds'), tileCount: null },
+    3: { hand: document.getElementById('ai3-hand'), melds: document.getElementById('ai3-melds'), tileCount: null }
   },
   actions: {
     chi: document.querySelector('[data-action="chi"]'),
@@ -1433,24 +1432,22 @@ function createBackHTML() {
   return `<img class="tile-back-small" src="assets/tiles/back.png">`;
 }
 
-// 渲染牌池
+// 渲染池 - 所有弃牌显示在中央
 function renderPool() {
-  // 渲染所有玩家的牌池
+  const poolCenter = document.getElementById('pool-center');
+  if (!poolCenter) return;
+
+  // 收集所有玩家的弃牌，按玩家分组显示
+  let html = '';
   for (let i = 0; i < 4; i++) {
-    const el = elements.players[i].pool;
-    if (!el) continue;
-    
     const player = game.players[i];
-    
-    // 为电脑玩家添加 ai-pool class 以实现10列显示
-    if (i > 0) {
-      el.classList.add('ai-pool');
-    } else {
-      el.classList.remove('ai-pool');
+    if (player.pool && player.pool.length > 0) {
+      html += `<div class="pool-row pool-player-${i}">`;
+      html += player.pool.map(tile => createTileHTML(tile)).join('');
+      html += '</div>';
     }
-    
-    el.innerHTML = player.pool.map(tile => createTileHTML(tile)).join('');
   }
+  poolCenter.innerHTML = html;
 }
 
 // 更新所有玩家手牌数

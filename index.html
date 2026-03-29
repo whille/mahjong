@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+<! html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>网页麻将</title>
   <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/tiles.css">
+  <link rel="" href="css/tiles.css">
 </head>
 <body>
   <!-- 竖屏手机战况切换按钮 -->
@@ -19,49 +19,32 @@
       </div>
       <h1>🀄 网页麻将</h1>
       <div class="config-area">
-        <label>超时: <input type="number" id="timeout-setting" value="10" min="5" max="120" step="5">秒</label>
+        <label>超时:  type="number id="timeout-setting" value="10" min="5" max="120" step="5">秒</label>
       </div>
     </header>
-    
+
     <main class="mahjong-table">
       <!-- 对家 (北家) - 上方 -->
       <div class="player-area player-top" id="player-2">
-        <div class="player-info">
-          <span class="player-name">北家</span>
-          <span class="tile-count" id="ai2-tile-count">13</span>
-        </div>
         <div class="hand-back" id="ai2-hand"></div>
-        <div class="melds" id="ai2-melds"></div>
-        <div class="pool-small" id="pool-2"></div>
+         class="melds" id="ai2-melds"></div>
       </div>
-      
+
       <!-- 中间区域: 左家/右家 + 牌池 -->
       <div class="middle-area">
         <!-- 左家 (西家) -->
         <div class="player-area player-left" id="player-3">
-          <div class="player-info">
-            <span class="player-name">西家</span>
-            <span class="tile-count" id="ai3-tile-count">13</span>
-          </div>
           <div class="melds" id="ai3-melds"></div>
           <div class="hand-back vertical" id="ai3-hand"></div>
-          <div class="pool-small" id="pool-3"></div>
         </div>
-        
+
         <!-- 中央弃牌池 -->
-        <div class="-center" id="pool-center">
-          <div class="pool-small" id="pool-self"></div>
-        </div>
-        
+        <div class="pool-center" id="pool-center"></div>
+
         <!-- 右家 (东家) -->
         <div class="player-area player-right" id="player-1">
-          <div class="player-info">
-            <span class="player-name">东家</span>
-            <span class="tile-count" id="ai1-tile-count">13</span>
-          </div>
-          <div class="melds" id="ai1-melds"></div>
+          <div class="melds id="ai1-melds"></div>
           <div class="hand-back vertical" id="ai1-hand"></div>
-          <div class="pool-small" id="pool-1"></div>
         </div>
       </div>
 
@@ -72,54 +55,51 @@
           <span class="player-status" id="player-status"></span>
         </div>
         <!-- 副露区 -->
-        <div class="melds" id="player-melds"></div>
+         class="melds" id="player-melds"></div>
         <!-- 手牌 -->
         <div class="hand" id="player-hand"></div>
         <div class="actions" id="player-actions">
           <button class="action-btn" data-action="chi" disabled>吃</button>
           <button class="action-btn" data-action="pong" disabled>碰</button>
           <button class="action-btn" data-action="kong" disabled>杠</button>
-          <button class="action-btn" data-action="win" disabled>胡</button>
+          <button class="action-btn data-action="win" disabled>胡</button>
           <button class="action-btn pass-btn" data-action="pass" disabled>跳过</button>
         </div>
       </div>
     </main>
-    
-    <!-- 右侧滚动条提示区域 -->
+
+    <!-- 战况日志 -->
     <div class="log-panel" id="log-panel">
-      <div class="log-header">📜 战况记录</div>
-      <div class="log-content" id="log-content"></div>
+      <h3>战况</h3>
+      <div class="log-content" id="message-area</div>
     </div>
-    
-    <!-- 消息区域 -->
-    <div class="message-area" id="message-area"></div>
-    
+
     <!-- 重新开始按钮 -->
-    <div class="restart-area" id="restart-area" style="display:none;">
-      <button class="restart-btn" onclick="initGame()">再来一局</button>
+    <div class="restart-area" id="restart-area" style="display: none;">
+      <button class="restart-btn" onclick="initGame()">重新开始</button>
     </div>
-    
-    <!-- 番数说明 -->
-    <div class="help-panel" id="help-panel" style="display: none;">
-      <h3>番数说明</h3>
+
+    <!-- 亮牌区域 -->
+    <div id="reveal-area" class="reveal-area" style="display: none;"></div>
+
+    <!-- 帮助面板 -->
+    <div id="help-panel" class="help-panel" style="display: none;">
+      <h3>麻将规则</h3>
       <ul>
-        <li>屁胡: 1番</li>
-        <li>碰碰胡: 2番</li>
-        <li>混一色: 3番</li>
-        <li>清一色: 4番</li>
-        <li>七对子: 4番</li>
-        <li>杠上开花: +2番</li>
-        <li>自摸: +1番</li>
+        <li><strong>胡牌条件</strong>：4组面子 + 1对将牌</li>
+        <li><strong>面子</strong>：顺子(123)或刻子(111)</li>
+        <li><strong>操作优先级</strong>：胡 > 杠 > 碰 > 吃</li>
+        <li><strong>番型</strong>：平胡1番、对对胡2番、清一色4番等</li>
       </ul>
       <button onclick="toggleHelp()">关闭</button>
     </div>
+
+    <!-- 吃牌选择面板容器 -->
+    <div id="chi-selection-container"></div>
   </div>
-  
+
   <script src="js/tile.js"></script>
-  <script src="js/hand.js"></script>
-  <script src="js/tileset.js"></script>
   <script src="js/judge.js"></script>
-  <script src="js/ai.js"></script>
   <script src="js/sound.js"></script>
   <script src="js/game.js"></script>
 </body>
