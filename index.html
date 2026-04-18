@@ -307,7 +307,8 @@
             gap: 3px;
             flex-wrap: wrap;
             justify-content: center;
-            max-width: 600px;
+            width: 100%;
+            max-width: 100%;
         }
 
         .melds {
@@ -387,27 +388,55 @@
 
         @media (max-width: 768px) {
             .tile {
-                width: 32px;
-                height: 42px;
-            }
-
-            .tile svg {
                 width: 28px;
                 height: 38px;
             }
 
-            .tile.opponent {
+            .tile svg {
                 width: 24px;
-                height: 32px;
+                height: 34px;
             }
 
-            .tile.opponent svg {
+            .tile.opponent {
                 width: 20px;
                 height: 28px;
             }
 
+            .tile.opponent svg {
+                width: 16px;
+                height: 24px;
+            }
+
             .game-table {
-                min-height: 500px;
+                min-height: 400px;
+            }
+
+            .hand-tiles {
+                max-width: 100%;
+            }
+
+            .melds {
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .tile {
+                width: 24px;
+                height: 34px;
+            }
+
+            .tile svg {
+                width: 20px;
+                height: 30px;
+            }
+
+            .hand-tiles {
+                gap: 1px;
+            }
+
+            .melds {
+                gap: 2px;
             }
         }
     </style>
