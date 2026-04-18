@@ -1,0 +1,48 @@
+/* 麻将牌图片样式 */
+
+.tile-img {
+  width: var(--tile-width, 48px);
+  height: var(--tile-height, 64px);
+  display: inline-block;
+  vertical-align: middle;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  user-select: none;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background-color: #fffef5; /* 亮色背景 */
+}
+
+.tile-img:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.tile-img.selected {
+  transform: translateY(-10px);
+  border: 2px solid #ffd700; /* 金色选中边框 */
+  box-shadow: 0 0 10px #ffd700, 0 8px 16px rgba(0,0,0,0.4);
+}
+
+/* 牌背 (小) */
+.tile-back-small {
+  width: 28px;
+  height: 38px;
+  display: inline-block;
+  vertical-align: middle;
+  border: 1px solid #d4af37;
+  border-radius: 2px;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .tile-img {
+    width: 32px;
+    height: 42px;
+  }
+  
+  .tile-back-small {
+    width: 18px;
+    height: 24px;
+  }
+}
